@@ -63,6 +63,38 @@ const Dashboard = ({ onNavigate }) => {
           <button className="tool-btn">EXPLORAR →</button>
         </div>
 
+        <div className="tool-card academy" onClick={() => onNavigate('academy')}>
+          <div className="tool-icon">
+            <BookOpen size={48} />
+          </div>
+          <h2>ACADEMY</h2>
+          <p>Centro educacional OSINT</p>
+          <ul className="tool-features">
+            <li>✓ O que é OSINT?</li>
+            <li>✓ Top 10 Dorks</li>
+            <li>✓ Dorking Defensivo</li>
+            <li>✓ Glossário Completo</li>
+            <li>✓ Guias & Tutoriais</li>
+          </ul>
+          <button className="tool-btn">APRENDER →</button>
+        </div>
+
+        <div className="tool-card reports" onClick={() => onNavigate('reports')}>
+          <div className="tool-icon">
+            <FileText size={48} />
+          </div>
+          <h2>RELATÓRIOS</h2>
+          <p>Gere relatórios profissionais</p>
+          <ul className="tool-features">
+            <li>✓ Relatórios Detalhados</li>
+            <li>✓ Exportar TXT</li>
+            <li>✓ Resumo Executivo</li>
+            <li>✓ Recomendações</li>
+            <li>✓ Histórico de Scans</li>
+          </ul>
+          <button className="tool-btn">GERAR →</button>
+        </div>
+
         <div className="tool-card emoji" onClick={() => onNavigate('emoji')}>
           <div className="tool-icon">
             <Lock size={48} />
