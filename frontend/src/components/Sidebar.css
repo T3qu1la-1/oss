@@ -10,10 +10,29 @@
   top: 0;
   transition: width 0.3s;
   z-index: 100;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar.collapsed {
   width: 80px;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: var(--bg-darker);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
 }
 
 .sidebar-header {
