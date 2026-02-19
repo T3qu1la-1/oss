@@ -144,52 +144,63 @@ const ExifHunter = () => {
       )}
 
       <div className="info-section">
-        <h3>💡 SOBRE METADADOS EXIF</h3>
+        <h3>💡 SOBRE FOTOFORENSICS</h3>
         <div className="info-grid">
           <div className="info-card">
-            <h4>📸 O que é EXIF?</h4>
+            <h4>🔬 Análise ELA (Error Level Analysis)</h4>
             <p>
-              EXIF (Exchangeable Image File Format) é um padrão que especifica formatos 
-              para imagens, sons e tags auxiliares usadas por câmeras digitais, smartphones e outros dispositivos.
+              FotoForensics usa ELA para identificar áreas de uma imagem que foram modificadas.
+              Áreas com diferentes níveis de compressão indicam manipulação.
             </p>
           </div>
           <div className="info-card">
-            <h4>📍 Dados de Localização</h4>
+            <h4>📊 Metadados EXIF Completos</h4>
             <p>
-              Muitas fotos contêm coordenadas GPS que revelam exatamente onde a imagem foi tirada. 
-              Isso pode ser útil para OSINT mas também representa riscos de privacidade.
+              Extrai TODOS os metadados: GPS, câmera, software, configurações, timestamps.
+              Revela informações que muitas vezes são esquecidas ao compartilhar fotos.
             </p>
           </div>
           <div className="info-card">
-            <h4>⚙️ Dados Técnicos</h4>
+            <h4>🖼️ Análise de Thumbnail</h4>
             <p>
-              Informações como modelo da câmera, configurações de exposição, ISO, abertura, 
-              e software usado podem ajudar a identificar a origem de uma imagem.
+              Verifica miniatura embutida que pode conter informações diferentes da imagem principal.
+              Útil para detectar edições.
             </p>
           </div>
           <div className="info-card">
-            <h4>🔒 Segurança</h4>
+            <h4>🔐 Privacidade & Segurança</h4>
             <p>
-              Sempre remova metadados sensíveis antes de compartilhar imagens online. 
-              Use ferramentas de limpeza de EXIF quando necessário.
+              SEMPRE remova metadados sensíveis antes de publicar fotos online.
+              GPS pode revelar sua localização exata, incluindo sua casa.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="warning-box">
-        <div className="warning-icon">⚠️</div>
-        <div className="warning-content">
-          <h4>NOTA TÉCNICA</h4>
-          <p>
-            Esta versão demonstra a interface do EXIF Hunter. Para extração completa de metadados EXIF, 
-            é necessário integrar bibliotecas especializadas como <code>exif-js</code> ou processamento backend.
-          </p>
-          <p>
-            A extração completa incluiria: coordenadas GPS, fabricante da câmera, configurações de foto, 
-            data/hora original, software usado, e muito mais.
-          </p>
+      <div className="fotoforensics-features">
+        <h3>🎯 O QUE FOTOFORENSICS REVELA</h3>
+        <div className="features-grid">
+          <div className="feature-item">✅ Coordenadas GPS (latitude/longitude)</div>
+          <div className="feature-item">✅ Fabricante e modelo da câmera</div>
+          <div className="feature-item">✅ Data e hora exatas da captura</div>
+          <div className="feature-item">✅ Configurações: ISO, abertura, velocidade</div>
+          <div className="feature-item">✅ Software usado para edição</div>
+          <div className="feature-item">✅ Dimensões originais vs atuais</div>
+          <div className="feature-item">✅ Análise de manipulação (ELA)</div>
+          <div className="feature-item">✅ Histórico de edições</div>
+          <div className="feature-item">✅ Copyright e autor</div>
+          <div className="feature-item">✅ Miniatura embutida</div>
         </div>
+      </div>
+
+      <div className="usage-tips">
+        <h3>📋 COMO USAR</h3>
+        <ol>
+          <li><strong>Método 1 (Recomendado):</strong> Cole a URL de uma imagem pública e clique em "Analisar com FotoForensics"</li>
+          <li><strong>Método 2:</strong> Faça upload e depois hospede a imagem online para análise completa</li>
+          <li><strong>Análise:</strong> FotoForensics abrirá em nova aba mostrando todos os metadados e análise ELA</li>
+          <li><strong>Interpretação:</strong> Áreas mais brilhantes no ELA indicam possível manipulação recente</li>
+        </ol>
       </div>
     </div>
   );
