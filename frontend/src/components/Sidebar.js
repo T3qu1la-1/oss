@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Shield, Search, Home, Lock, Image, Compass } from 'lucide-react';
+import { Menu, Shield, Search, Home, Lock, Image, Compass, BookOpen, FileText } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = ({ currentPage, onPageChange }) => {
@@ -8,8 +8,10 @@ const Sidebar = ({ currentPage, onPageChange }) => {
   const menuItems = [
     { id: 'home', name: 'Início', icon: Home },
     { id: 'pentester', name: 'Pentester', icon: Shield },
+    { id: 'reports', name: 'Relatórios', icon: FileText },
     { id: 'osint', name: 'OSINT Dorks', icon: Search },
     { id: 'framework', name: 'OSINT Framework', icon: Compass },
+    { id: 'academy', name: 'Academy', icon: BookOpen },
     { id: 'emoji', name: 'Emoji-Crypt', icon: Lock },
     { id: 'exif', name: 'EXIF Hunter', icon: Image },
   ];
