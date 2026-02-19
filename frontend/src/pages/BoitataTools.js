@@ -128,9 +128,9 @@ const BoitataTools = () => {
             <h4>Como Testar:</h4>
             <ol>
               <li>Cole a URL do site alvo abaixo</li>
-              <li>O site será carregado em um iframe</li>
-              <li>Se o site carregar = VULNERÁVEL</li>
-              <li>Se bloquear = PROTEGIDO</li>
+              <li>Clique em "TESTAR AGORA"</li>
+              <li>Se o site carregar = VULNERÁVEL ⚠️</li>
+              <li>Se bloquear = PROTEGIDO ✅</li>
             </ol>
             
             <div className="clickjacking-tester">
@@ -138,9 +138,31 @@ const BoitataTools = () => {
                 type="url" 
                 placeholder="https://exemplo.com" 
                 className="url-input"
+                value={clickjackingUrl}
+                onChange={(e) => setClickjackingUrl(e.target.value)}
+                disabled={testing}
               />
-              <button className="test-btn">TESTAR</button>
+              <button 
+                className="test-btn" 
+                onClick={testClickjacking}
+                disabled={testing}
+              >
+                {testing ? 'TESTANDO...' : 'TESTAR AGORA'}
+              </button>
             </div>
+
+            {clickjackingResult && (
+              <div className={`result-box result-${clickjackingResult.status}`}>
+                <div className="result-icon">
+                  {clickjackingResult.status === 'vulnerable' ? '⚠️' : 
+                   clickjackingResult.status === 'protected' ? '✅' : '⏱️'}
+                </div>
+                <div className="result-content">
+                  <h4>{clickjackingResult.message}</h4>
+                  <p>{clickjackingResult.details}</p>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="info-box">
