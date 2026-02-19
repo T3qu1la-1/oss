@@ -108,31 +108,174 @@ class Report(BaseModel):
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Pentester & OSINT Toolkit API"}
 
+# Status check routes (legacy)
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
     status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
     doc = status_obj.model_dump()
     doc['timestamp'] = doc['timestamp'].isoformat()
-    
     _ = await db.status_checks.insert_one(doc)
     return status_obj
 
 @api_router.get("/status", response_model=List[StatusCheck])
 async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
     status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
     for check in status_checks:
         if isinstance(check['timestamp'], str):
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
     return status_checks
+
+# Scanner routes
+@api_router.post("/scans", response_model=Scan)
+async def create_scan(scan_input: ScanCreate, background_tasks: BackgroundTasks):
+    """Criar novo scan"""
+    scan = Scan(
+        name=scan_input.name,
+        target=scan_input.target,
+        scanType=scan_input.scanType,
+        status="pending",
+        startedAt=datetime.now(timezone.utc)
+    )
+    
+    doc = scan.model_dump()
+    doc['startedAt'] = doc['startedAt'].isoformat()
+    doc['createdAt'] = doc['createdAt'].isoformat()
+    await db.scans.insert_one(doc)
+    
+    # Iniciar scan em background
+    background_tasks.add_task(run_scan, scan.id, scan.target, scan.scanType)
+    
+    return scan
+
+async def run_scan(scan_id: str, target: str, scan_type: str):
+    """Executar scan em background"""
+    try:
+        # Atualizar status para running
+        await db.scans.update_one(
+            {"id": scan_id},
+            {"$set": {"status": "running", "progress": 0}}
+        )
+        await ws_manager.broadcast({
+            "type": "scan-update",
+            "scanId": scan_id,
+            "update": {"status": "running", "progress": 0}
+        })
+        
+        # Executar scan
+        scanner = VulnerabilityScanner(ws_manager)
+        
+        async def status_callback(update):
+            await db.scans.update_one({"id": scan_id}, {"$set": update})
+            await ws_manager.broadcast({
+                "type": "scan-update",
+                "scanId": scan_id,
+                "update": update
+            })
+        
+        vulnerabilities = await scanner.scan_target(scan_id, target, scan_type, status_callback)
+        
+        # Salvar vulnerabilidades
+        for vuln in vulnerabilities:
+            vuln_doc = vuln.copy()
+            vuln_doc['id'] = str(uuid.uuid4())
+            vuln_doc['createdAt'] = datetime.now(timezone.utc).isoformat()
+            await db.vulnerabilities.insert_one(vuln_doc)
+            
+            await ws_manager.broadcast({
+                "type": "vulnerability-found",
+                "scanId": scan_id,
+                "vulnerability": vuln_doc
+            })
+        
+        # Finalizar scan
+        await db.scans.update_one(
+            {"id": scan_id},
+            {"$set": {
+                "status": "completed",
+                "progress": 100,
+                "currentTask": "Scan completed",
+                "completedAt": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        await ws_manager.broadcast({
+            "type": "scan-update",
+            "scanId": scan_id,
+            "update": {"status": "completed", "progress": 100}
+        })
+        
+    except Exception as e:
+        logger.error(f"Scan failed: {e}")
+        await db.scans.update_one(
+            {"id": scan_id},
+            {"$set": {"status": "failed", "currentTask": f"Error: {str(e)}"}}
+        )
+
+@api_router.get("/scans", response_model=List[Scan])
+async def get_scans():
+    """Listar todos os scans"""
+    scans = await db.scans.find({}, {"_id": 0}).sort("createdAt", -1).to_list(100)
+    for scan in scans:
+        if scan.get('startedAt') and isinstance(scan['startedAt'], str):
+            scan['startedAt'] = datetime.fromisoformat(scan['startedAt'])
+        if scan.get('completedAt') and isinstance(scan['completedAt'], str):
+            scan['completedAt'] = datetime.fromisoformat(scan['completedAt'])
+        if isinstance(scan['createdAt'], str):
+            scan['createdAt'] = datetime.fromisoformat(scan['createdAt'])
+    return scans
+
+@api_router.get("/scans/{scan_id}", response_model=Scan)
+async def get_scan(scan_id: str):
+    """Obter scan específico"""
+    scan = await db.scans.find_one({"id": scan_id}, {"_id": 0})
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    
+    if scan.get('startedAt') and isinstance(scan['startedAt'], str):
+        scan['startedAt'] = datetime.fromisoformat(scan['startedAt'])
+    if scan.get('completedAt') and isinstance(scan['completedAt'], str):
+        scan['completedAt'] = datetime.fromisoformat(scan['completedAt'])
+    if isinstance(scan['createdAt'], str):
+        scan['createdAt'] = datetime.fromisoformat(scan['createdAt'])
+    return scan
+
+@api_router.get("/scans/{scan_id}/vulnerabilities", response_model=List[Vulnerability])
+async def get_vulnerabilities(scan_id: str):
+    """Listar vulnerabilidades de um scan"""
+    vulns = await db.vulnerabilities.find({"scan_id": scan_id}, {"_id": 0}).to_list(1000)
+    for vuln in vulns:
+        if isinstance(vuln['createdAt'], str):
+            vuln['createdAt'] = datetime.fromisoformat(vuln['createdAt'])
+    return vulns
+
+@api_router.get("/stats")
+async def get_stats():
+    """Estatísticas gerais"""
+    total_scans = await db.scans.count_documents({})
+    total_vulns = await db.vulnerabilities.count_documents({})
+    critical_vulns = await db.vulnerabilities.count_documents({"severity": "critical"})
+    high_vulns = await db.vulnerabilities.count_documents({"severity": "high"})
+    
+    return {
+        "totalScans": total_scans,
+        "totalVulnerabilities": total_vulns,
+        "criticalVulnerabilities": critical_vulns,
+        "highVulnerabilities": high_vulns
+    }
+
+# WebSocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Echo back for now
+            await websocket.send_json({"type": "pong", "data": data})
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
 
 # Include the router in the main app
 app.include_router(api_router)
