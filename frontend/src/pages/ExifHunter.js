@@ -198,8 +198,8 @@ const ExifHunter = () => {
         <div className="method-divider">OU</div>
 
         <div className="method-card">
-          <h3>📁 MÉTODO 2: Upload de Arquivo</h3>
-          <p>Faça upload de uma imagem do seu dispositivo</p>
+          <h3>📁 MÉTODO 2: Upload de Arquivo + Extração EXIF Real</h3>
+          <p>Faça upload de uma imagem para extrair TODOS os metadados EXIF localmente</p>
           <div className="upload-section-inline">
             <input
               type="file"
@@ -213,9 +213,9 @@ const ExifHunter = () => {
               {imageFile ? imageFile.name : 'SELECIONAR IMAGEM'}
             </label>
             {imageFile && (
-              <button className="btn-analyze-upload" onClick={analyzeUploadedImage}>
+              <button className="btn-analyze-upload" onClick={extractLocalExif} disabled={loading}>
                 <FileSearch size={20} />
-                ANALISAR
+                {loading ? 'EXTRAINDO...' : 'EXTRAIR EXIF'}
               </button>
             )}
           </div>
@@ -231,6 +231,37 @@ const ExifHunter = () => {
         <button className="btn-clear-all" onClick={clear}>
           <Trash2 size={20} /> LIMPAR TUDO
         </button>
+      )}
+
+      {exifData && (
+        <div className="metadata-section">
+          <div className="metadata-header">
+            <div className="success-badge">
+              <CheckCircle size={20} />
+              <span>METADADOS EXTRAÍDOS COM SUCESSO</span>
+            </div>
+            <button className="btn-download" onClick={downloadReport}>
+              <FileSearch size={18} /> EXPORTAR TXT
+            </button>
+          </div>
+          
+          <div className="metadata-grid">
+            {Object.entries(exifData).map(([key, value]) => (
+              <div key={key} className="metadata-item">
+                <div className="metadata-key">{key}</div>
+                <div className="metadata-value">
+                  {key === 'Localização (Google Maps)' ? (
+                    <a href={value} target="_blank" rel="noopener noreferrer" className="gps-link">
+                      <ExternalLink size={14} /> Ver no Google Maps
+                    </a>
+                  ) : (
+                    value
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="info-section">
