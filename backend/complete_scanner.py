@@ -330,6 +330,142 @@ class CompleteVulnerabilityScanner:
                     f"Status 200, size: {len(r['body'])}", "Bloqueie acesso", "CWE-538")
         return None
     
+    # Teste 26
+    async def test_clickjacking(self, target: str, scan_id: str) -> Optional[Dict]:
+        r = await self.make_request(target)
+        h = {k.lower(): v for k, v in r["headers"].items()}
+        if 'x-frame-options' not in h and 'content-security-policy' not in h:
+            return self.create_vuln(scan_id, "medium", "Clickjacking Vulnerability",
+                "Aplicação vulnerável a clickjacking - sem X-Frame-Options ou CSP",
+                "Configuration", target, "GET", "Headers de proteção ausentes",
+                "Adicione X-Frame-Options: DENY ou CSP frame-ancestors", "CWE-1021")
+        return None
+    
+    # Teste 27
+    async def test_backup_files(self, target: str, scan_id: str) -> Optional[Dict]:
+        extensions = ['.bak', '.old', '.backup', '.swp', '~', '.orig', '.save']
+        for ext in extensions:
+            for path in ['/index.php', '/config.php', '/database.php', '/wp-config.php']:
+                url = target.rstrip('/') + path + ext
+                r = await self.make_request(url)
+                if r["status_code"] == 200 and len(r["body"]) > 100:
+                    return self.create_vuln(scan_id, "high", "Arquivos de Backup Expostos",
+                        f"Arquivo de backup acessível: {path}{ext}", "Info Disclosure", url, ext,
+                        f"Status 200, tamanho: {len(r['body'])}", "Remova arquivos de backup", "CWE-530")
+        return None
+    
+    # Teste 28
+    async def test_xml_injection(self, target: str, scan_id: str) -> Optional[Dict]:
+        payloads = [
+            '<root><user>admin</user><admin>true</admin></root>',
+            '<![CDATA[<script>alert(1)</script>]]>'
+        ]
+        for p in payloads:
+            r = await self.make_request(target, 'POST', {'Content-Type': 'application/xml'}, p)
+            if 'admin' in r["body"].lower() and r["status_code"] == 200:
+                return self.create_vuln(scan_id, "high", "XML Injection",
+                    "Aplicação processa XML malicioso", "Injection", target, p[:50],
+                    r["body"][:200], "Valide e sanitize XML input", "CWE-91")
+        return None
+    
+    # Teste 29
+    async def test_file_upload(self, target: str, scan_id: str) -> Optional[Dict]:
+        for path in ['/upload', '/upload.php', '/api/upload', '/file-upload']:
+            url = target.rstrip('/') + path
+            r = await self.make_request(url)
+            if r["status_code"] in [200, 405]:
+                return self.create_vuln(scan_id, "medium", "Endpoint de Upload Detectado",
+                    f"Endpoint de upload encontrado: {path}", "File Upload", url, path,
+                    f"Status: {r['status_code']}", "Valide tipos de arquivo e extensões", "CWE-434")
+        return None
+    
+    # Teste 30
+    async def test_idor(self, target: str, scan_id: str) -> Optional[Dict]:
+        payloads = ['1', '2', '100', 'admin', '0']
+        for p in payloads:
+            url = f"{target}{'&' if '?' in target else '?'}user_id={p}"
+            r = await self.make_request(url)
+            if r["status_code"] == 200 and len(r["body"]) > 100:
+                return self.create_vuln(scan_id, "high", "IDOR (Insecure Direct Object Reference)",
+                    "Possível acesso a dados de outros usuários", "Authorization", url, p,
+                    f"Dados retornados para user_id={p}", "Implemente controle de acesso adequado", "CWE-639")
+        return None
+    
+    # Teste 31
+    async def test_brute_force_protection(self, target: str, scan_id: str) -> Optional[Dict]:
+        login_paths = ['/login', '/api/login', '/auth/login', '/signin']
+        for path in login_paths:
+            url = target.rstrip('/') + path
+            r = await self.make_request(url, 'POST', {'Content-Type': 'application/json'},
+                '{"email":"test@test.com","password":"wrong"}')
+            if r["status_code"] in [200, 401, 400]:
+                # Fazer múltiplas tentativas
+                for _ in range(3):
+                    await self.make_request(url, 'POST', {'Content-Type': 'application/json'},
+                        '{"email":"test@test.com","password":"wrong"}')
+                r2 = await self.make_request(url, 'POST', {'Content-Type': 'application/json'},
+                    '{"email":"test@test.com","password":"wrong"}')
+                if r2["status_code"] not in [429, 423]:
+                    return self.create_vuln(scan_id, "medium", "Proteção contra Brute Force Ausente",
+                        "Endpoint de login sem rate limiting", "Authentication", url, "POST",
+                        "Múltiplas tentativas aceitas", "Implemente rate limiting e CAPTCHA", "CWE-307")
+        return None
+    
+    # Teste 32
+    async def test_weak_password_policy(self, target: str, scan_id: str) -> Optional[Dict]:
+        register_paths = ['/register', '/signup', '/api/users', '/api/register']
+        weak_passwords = ['123', 'abc', '1']
+        for path in register_paths:
+            url = target.rstrip('/') + path
+            for pwd in weak_passwords:
+                r = await self.make_request(url, 'POST', {'Content-Type': 'application/json'},
+                    f'{{"email":"test{pwd}@test.com","password":"{pwd}"}}')
+                if r["status_code"] in [200, 201]:
+                    return self.create_vuln(scan_id, "medium", "Política de Senha Fraca",
+                        "Aplicação aceita senhas fracas", "Authentication", url, pwd,
+                        f"Senha '{pwd}' aceita", "Implemente política de senha forte", "CWE-521")
+        return None
+    
+    # Teste 33
+    async def test_session_fixation(self, target: str, scan_id: str) -> Optional[Dict]:
+        r1 = await self.make_request(target)
+        session1 = r1["headers"].get('set-cookie', '')
+        r2 = await self.make_request(target, headers={'Cookie': 'SESSIONID=attacker_session'})
+        if 'attacker_session' in str(r2["headers"]):
+            return self.create_vuln(scan_id, "high", "Session Fixation",
+                "Aplicação aceita session ID arbitrário", "Session", target, "SESSIONID=attacker",
+                "Session fixation detectado", "Regenere session ID após login", "CWE-384")
+        return None
+    
+    # Teste 34
+    async def test_csrf_protection(self, target: str, scan_id: str) -> Optional[Dict]:
+        forms_paths = ['/api/update', '/profile', '/settings', '/account']
+        for path in forms_paths:
+            url = target.rstrip('/') + path
+            r = await self.make_request(url, 'POST', {'Content-Type': 'application/json'},
+                '{"data":"test"}')
+            if r["status_code"] in [200, 201, 400]:
+                headers = {k.lower(): v for k, v in r["headers"].items()}
+                if 'x-csrf-token' not in str(r) and r["status_code"] == 200:
+                    return self.create_vuln(scan_id, "medium", "CSRF Protection Ausente",
+                        "Endpoint aceita POST sem token CSRF", "CSRF", url, "POST",
+                        "Sem verificação CSRF", "Implemente tokens CSRF", "CWE-352")
+        return None
+    
+    # Teste 35
+    async def test_error_handling(self, target: str, scan_id: str) -> Optional[Dict]:
+        error_paths = ['/api/nonexistent', '/error', '/%00', '/\x00']
+        for path in error_paths:
+            url = target.rstrip('/') + path
+            r = await self.make_request(url)
+            body_lower = r["body"].lower()
+            if any(err in body_lower for err in ['traceback', 'stacktrace', 'exception', 'fatal error', 
+                                                   'debug', 'line ', 'file "', 'at /']):
+                return self.create_vuln(scan_id, "medium", "Information Leakage via Error",
+                    "Mensagens de erro expõem informações sensíveis", "Info Disclosure", url, path,
+                    r["body"][:300], "Configure error handling adequado", "CWE-209")
+        return None
+    
     async def scan_target(self, scan_id: str, target: str, scan_type: str, status_callback=None) -> List[Dict]:
         vulnerabilities = []
         tests = [
