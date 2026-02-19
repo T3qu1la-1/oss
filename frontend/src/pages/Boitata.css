@@ -224,6 +224,57 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.result-box {
+  margin-top: 30px;
+  padding: 25px;
+  border: 2px solid;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-box.result-vulnerable {
+  background: rgba(255, 107, 53, 0.1);
+  border-color: #ff6b35;
+}
+
+.result-box.result-protected {
+  background: rgba(0, 255, 65, 0.1);
+  border-color: var(--primary);
+}
+
+.result-box.result-timeout {
+  background: rgba(255, 204, 0, 0.1);
+  border-color: #ffcc00;
+}
+
+.result-icon {
+  font-size: 3rem;
+}
+
+.result-content h4 {
+  color: var(--text-bright);
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.result-content p {
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
 .boitata-footer {
   text-align: center;
   margin-top: 60px;
