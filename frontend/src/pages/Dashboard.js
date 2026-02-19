@@ -155,7 +155,7 @@ const Dashboard = ({ onNavigate }) => {
           <div className="stat-card">
             <div className="stat-icon">🎯</div>
             <div className="stat-info">
-              <div className="stat-number">5</div>
+              <div className="stat-number">8</div>
               <div className="stat-label">Ferramentas</div>
             </div>
           </div>
