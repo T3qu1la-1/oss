@@ -6,6 +6,7 @@ import PentesterPage from './pages/PentesterPage';
 import Reports from './pages/Reports';
 import OSINTPage from './pages/OSINTPage';
 import OSINTFrameworkPage from './pages/OSINTFramework';
+import BoitataTools from './pages/BoitataTools';
 import Academy from './pages/Academy';
 import EmojiCrypt from './pages/EmojiCrypt';
 import ExifHunter from './pages/ExifHunter';
@@ -25,6 +26,8 @@ function App() {
         return <OSINTPage />;
       case 'framework':
         return <OSINTFrameworkPage />;
+      case 'boitata':
+        return <BoitataTools />;
       case 'academy':
         return <Academy />;
       case 'emoji':
