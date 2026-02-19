@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
-from scanner import VulnerabilityScanner
 from complete_scanner import CompleteVulnerabilityScanner
 import asyncio
 
@@ -165,8 +164,8 @@ async def run_scan(scan_id: str, target: str, scan_type: str):
             "update": {"status": "running", "progress": 0}
         })
         
-        # Executar scan
-        scanner = AdvancedVulnerabilityScanner(ws_manager)
+        # Executar scan com o scanner completo
+        scanner = CompleteVulnerabilityScanner(ws_manager)
         
         async def status_callback(update):
             await db.scans.update_one({"id": scan_id}, {"$set": update})
