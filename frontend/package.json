@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@deck.gl-community/editable-layers": "^9.2.5",
     "@deck.gl/layers": "^9.2.10",
     "@deck.gl/react": "^9.2.10",
     "@hookform/resolvers": "^5.0.1",
@@ -33,6 +34,9 @@
     "@radix-ui/react-toggle": "^1.1.6",
     "@radix-ui/react-toggle-group": "^1.1.7",
     "@radix-ui/react-tooltip": "^1.2.4",
+    "@turf/bbox": "^7.3.4",
+    "@turf/center": "^7.3.4",
+    "@turf/turf": "^7.3.4",
     "axios": "^1.8.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -43,11 +47,13 @@
     "embla-carousel-react": "^8.6.0",
     "exif-js": "^2.3.0",
     "framer-motion": "^12.34.3",
+    "immer": "^11.1.4",
     "input-otp": "^1.4.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.507.0",
     "maplibre-gl": "^5.19.0",
     "next-themes": "^0.4.6",
+    "osmtogeojson": "^3.0.0-beta.5",
     "react": "^19.0.0",
     "react-day-picker": "8.10.1",
     "react-dom": "^19.0.0",
@@ -62,7 +68,8 @@
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "zod": "^3.24.4"
+    "zod": "^3.24.4",
+    "zustand": "^5.0.11"
   },
   "scripts": {
     "start": "craco start",
