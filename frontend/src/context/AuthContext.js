@@ -11,11 +11,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      loadUser();
-    } else {
+    const loadUserData = async () => {
+      if (token) {
+        try {
+          const response = await axios.get(`${API_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setUser(response.data);
+        } catch (error) {
+          console.error('Error loading user:', error);
+          logout();
+        }
+      }
       setLoading(false);
-    }
+    };
+    loadUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const loadUser = async () => {
