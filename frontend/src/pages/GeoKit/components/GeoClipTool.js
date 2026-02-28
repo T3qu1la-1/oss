@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import DeckGL from '@deck.gl/react';
-import { Map } from 'react-map-gl';
-import { HeatmapLayer, ScatterplotLayer } from '@deck.gl/layers';
+import Map from 'react-map-gl/maplibre';
+import { HeatmapLayer } from '@deck.gl/aggregation-layers';
+import { ScatterplotLayer } from '@deck.gl/layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import { Upload, Loader2, X, Download, Zap } from 'lucide-react';
-import { bbox as turfBbox } from '@turf/turf';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
