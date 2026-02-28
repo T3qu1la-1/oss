@@ -1,7 +1,7 @@
 """
 MEGA SCANNER - OLHOS DE DEUS
-70+ Testes de Vulnerabilidades REAIS
-Scanner profissional de segurança
+73 Testes de Vulnerabilidades REAIS
+Scanner profissional de segurança avançado
 """
 import asyncio
 import aiohttp
