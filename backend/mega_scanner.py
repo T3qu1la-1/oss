@@ -984,7 +984,7 @@ class MegaVulnerabilityScanner:
                     "WebSocket aceita origens não confiáveis", "Configuration", ws_url,
                     "Origin: http://evil.com", "Conexão aceita",
                     "Valide Origin em conexões WebSocket", "CWE-942"))
-        except:
+        except Exception:
             pass
         return results
 
