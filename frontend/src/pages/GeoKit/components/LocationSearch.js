@@ -1,260 +1,138 @@
-import React, { useState, useCallback } from 'react';
-import DeckGL from '@deck.gl/react';
-import Map from 'react-map-gl/maplibre';
-import { ScatterplotLayer, TextLayer } from '@deck.gl/layers';
-import { FlyToInterpolator } from '@deck.gl/core';
-import { Search, Loader2, MapPin, Navigation, Download } from 'lucide-react';
+import React, { useState, useCallback, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Search, Loader2, MapPin, Download } from 'lucide-react';
 import axios from 'axios';
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+const INITIAL_CENTER = [-14.235, -51.9253];
+const INITIAL_ZOOM = 4;
 
-const INITIAL_VIEW_STATE = {
-  longitude: -51.9253,
-  latitude: -14.235,
-  zoom: 4,
-  pitch: 0,
-  bearing: 0
+const resultIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNSIgY3k9IjE1IiByPSIxMCIgZmlsbD0iIzAwZmYwMCIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -15]
+});
+
+const FlyToLocation = ({ position, zoom }) => {
+  const map = useMap();
+  React.useEffect(() => {
+    if (position) {
+      map.flyTo(position, zoom || 14, { duration: 2 });
+    }
+  }, [position, zoom, map]);
+  return null;
 };
 
 const LocationSearch = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedResult, setSelectedResult] = useState(null);
+  const [flyToPos, setFlyToPos] = useState(null);
   const [searchHistory, setSearchHistory] = useState([]);
 
-  // Search using Nominatim API
   const searchLocation = useCallback(async () => {
     if (!query.trim()) return;
-    
     setIsSearching(true);
-    
     try {
       const response = await axios.get('https://nominatim.openstreetmap.org/search', {
-        params: {
-          q: query,
-          format: 'json',
-          limit: 20,
-          addressdetails: 1,
-          extratags: 1
-        },
-        headers: {
-          'User-Agent': 'OlhosDeDeusGeoKit/1.0'
-        }
+        params: { q: query, format: 'json', limit: 20, addressdetails: 1 },
+        headers: { 'User-Agent': 'OlhosDeDeusGeoKit/1.0' }
       });
-      
       const data = response.data.map((item, index) => ({
         ...item,
         id: `${item.place_id}-${index}`,
         lat: parseFloat(item.lat),
         lon: parseFloat(item.lon)
       }));
-      
       setResults(data);
-      
-      // Add to history
       setSearchHistory(prev => [
         { query, timestamp: new Date().toISOString(), count: data.length },
         ...prev.slice(0, 9)
       ]);
-      
-      // Fly to first result
       if (data.length > 0) {
-        flyToLocation(data[0]);
+        setFlyToPos([data[0].lat, data[0].lon]);
+        setSelectedResult(data[0]);
       }
     } catch (error) {
-      console.error('Search error:', error);
-      alert('Erro ao buscar localizaÃ§Ã£o. Tente novamente.');
+      alert('Erro ao buscar');
     } finally {
       setIsSearching(false);
     }
   }, [query]);
 
-  // Fly to location
-  const flyToLocation = useCallback((location) => {
-    setSelectedResult(location);
-    setViewState({
-      longitude: location.lon,
-      latitude: location.lat,
-      zoom: 14,
-      pitch: 45,
-      bearing: 0,
-      transitionDuration: 2000,
-      transitionInterpolator: new FlyToInterpolator()
-    });
+  const flyToResult = useCallback((result) => {
+    setSelectedResult(result);
+    setFlyToPos([result.lat, result.lon]);
   }, []);
 
-  // Reverse geocoding - get address from coordinates
-  const reverseGeocode = useCallback(async (lat, lon) => {
-    try {
-      const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
-        params: {
-          lat,
-          lon,
-          format: 'json',
-          addressdetails: 1
-        },
-        headers: {
-          'User-Agent': 'OlhosDeDeusGeoKit/1.0'
-        }
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Reverse geocode error:', error);
-      return null;
-    }
-  }, []);
-
-  // Export results
   const exportResults = useCallback(() => {
-    const data = {
+    const blob = new Blob([JSON.stringify({
       query,
-      timestamp: new Date().toISOString(),
-      results: results.map(r => ({
-        name: r.display_name,
-        latitude: r.lat,
-        longitude: r.lon,
-        type: r.type,
-        importance: r.importance
-      }))
-    };
-    
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
+      results: results.map(r => ({ name: r.display_name, lat: r.lat, lon: r.lon }))
+    }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'location-search-results.json';
+    link.download = 'results.json';
     link.click();
+    URL.revokeObjectURL(url);
   }, [query, results]);
-
-  // Deck.GL layers
-  const layers = [
-    // Results points
-    results.length > 0 && new ScatterplotLayer({
-      id: 'search-results',
-      data: results,
-      getPosition: d => [d.lon, d.lat],
-      getFillColor: d => selectedResult && d.id === selectedResult.id ? 
-        [255, 255, 0] : [0, 255, 0],
-      getRadius: 50,
-      radiusMinPixels: 5,
-      radiusMaxPixels: 30,
-      pickable: true,
-      autoHighlight: true,
-      onClick: info => flyToLocation(info.object)
-    }),
-    
-    // Labels for top results
-    results.length > 0 && new TextLayer({
-      id: 'result-labels',
-      data: results.slice(0, 5),
-      getPosition: d => [d.lon, d.lat],
-      getText: d => d.name || d.type,
-      getSize: 16,
-      getColor: [255, 255, 255],
-      getAngle: 0,
-      getTextAnchor: 'middle',
-      getAlignmentBaseline: 'bottom',
-      getPixelOffset: [0, -20]
-    })
-  ].filter(Boolean);
 
   return (
     <div className="location-search-tool">
       <div className="search-layout">
-        {/* Search Panel */}
         <div className="search-panel">
           <div className="search-header">
-            <h2><Search size={24} /> Busca Global de LocalizaÃ§Ãµes</h2>
-            <p>Pesquise endereÃ§os, cidades, POIs em todo o mundo</p>
+            <h2><Search size={24} /> Busca Global</h2>
+            <p>Pesquise endereços e locais</p>
           </div>
-
-          {/* Search Box */}
           <div className="search-input-group">
             <div className="search-input-wrapper">
               <Search className="search-icon" size={20} />
               <input 
                 type="text"
                 className="search-input"
-                placeholder="Ex: Cristo Redentor, Rio de Janeiro..."
+                placeholder="Ex: Cristo Redentor, Rio..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
               />
             </div>
-            <button 
-              className="search-button"
-              onClick={searchLocation}
-              disabled={isSearching || !query.trim()}
-            >
-              {isSearching ? (
-                <><Loader2 className="spin" size={20} /> Buscando...</>
-              ) : (
-                <><Search size={20} /> Buscar</>
-              )}
+            <button className="search-button" onClick={searchLocation} disabled={isSearching || !query.trim()}>
+              {isSearching ? <><Loader2 className="spin" size={20} /> Buscando...</> : <><Search size={20} /> Buscar</>}
             </button>
           </div>
-
-          {/* Quick Searches */}
           <div className="quick-searches">
-            <h4>Buscas RÃ¡pidas:</h4>
+            <h4>Buscas Rápidas:</h4>
             <div className="quick-btns">
-              {[
-                'Torre Eiffel, Paris',
-                'Times Square, New York',
-                'Cristo Redentor, Rio',
-                'Big Ben, London',
-                'Sagrada Familia, Barcelona'
-              ].map(place => (
-                <button 
-                  key={place}
-                  className="quick-btn"
-                  onClick={() => {
-                    setQuery(place);
-                    setTimeout(() => searchLocation(), 100);
-                  }}
-                >
+              {['Torre Eiffel, Paris', 'Times Square, NY', 'Cristo Redentor'].map(place => (
+                <button key={place} className="quick-btn" onClick={() => { setQuery(place); setTimeout(searchLocation, 100); }}>
                   {place.split(',')[0]}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Results List */}
           {results.length > 0 && (
             <div className="results-section">
               <div className="results-header">
-                <h3>ð {results.length} Resultados</h3>
+                <h3>📍 {results.length} Resultados</h3>
                 <button className="export-btn-small" onClick={exportResults}>
                   <Download size={16} /> Exportar
                 </button>
               </div>
-              
               <div className="results-list-scroll">
                 {results.map((result, index) => (
-                  <div 
-                    key={result.id}
-                    className={`result-card ${selectedResult && result.id === selectedResult.id ? 'selected' : ''}`}
-                    onClick={() => flyToLocation(result)}
-                  >
+                  <div key={result.id} className={`result-card ${selectedResult?.id === result.id ? 'selected' : ''}`} onClick={() => flyToResult(result)}>
                     <div className="result-rank">#{index + 1}</div>
                     <div className="result-content">
                       <h4>{result.display_name}</h4>
                       <div className="result-meta">
                         <span className="result-type">{result.type}</span>
-                        <span className="result-coords">
-                          {result.lat.toFixed(4)}, {result.lon.toFixed(4)}
-                        </span>
+                        <span className="result-coords">{result.lat.toFixed(4)}, {result.lon.toFixed(4)}</span>
                       </div>
-                      {result.address && (
-                        <div className="result-address">
-                          {result.address.country && `ð³ï¸ ${result.address.country}`}
-                          {result.address.state && ` â¢ ${result.address.state}`}
-                        </div>
-                      )}
                     </div>
                     <MapPin className="result-icon" size={20} />
                   </div>
@@ -262,65 +140,25 @@ const LocationSearch = () => {
               </div>
             </div>
           )}
-
-          {/* Search History */}
-          {searchHistory.length > 0 && (
-            <div className="search-history">
-              <h4>ð HistÃ³rico Recente:</h4>
-              <div className="history-list">
-                {searchHistory.map((item, index) => (
-                  <button 
-                    key={index}
-                    className="history-item"
-                    onClick={() => {
-                      setQuery(item.query);
-                      setTimeout(() => searchLocation(), 100);
-                    }}
-                  >
-                    <Search size={14} />
-                    <span>{item.query}</span>
-                    <small>{item.count} results</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-
-        {/* Map */}
         <div className="search-map-container">
-          <DeckGL
-            initialViewState={INITIAL_VIEW_STATE}
-            viewState={viewState}
-            controller={true}
-            layers={layers}
-            onViewStateChange={({viewState}) => setViewState(viewState)}
-          >
-            <Map
-              mapStyle={MAP_STYLE}
-              
-            />
-          </DeckGL>
-
+          <MapContainer center={INITIAL_CENTER} zoom={INITIAL_ZOOM} style={{ height: '100%', width: '100%' }}>
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+            <FlyToLocation position={flyToPos} />
+            {results.map(result => (
+              <Marker key={result.id} position={[result.lat, result.lon]} icon={resultIcon} eventHandlers={{ click: () => flyToResult(result) }}>
+                <Popup><div style={{ color: '#000' }}><strong>{result.display_name}</strong></div></Popup>
+              </Marker>
+            ))}
+          </MapContainer>
           {results.length === 0 && (
             <div className="map-placeholder">
-              <Navigation size={64} />
-              <h3>Nenhuma busca realizada</h3>
-              <p>Digite um local e clique em "Buscar"</p>
+              <Search size={64} />
+              <h3>Nenhuma busca</h3>
+              <p>Digite um local</p>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Info */}
-      <div className="search-info">
-        <h3>ð Powered by OpenStreetMap Nominatim</h3>
-        <ul>
-          <li>â Busca global em mais de 220 paÃ­ses</li>
-          <li>â Geocoding e reverse geocoding</li>
-          <li>â POIs, endereÃ§os, cidades, monumentos</li>
-          <li>â Dados atualizados do OpenStreetMap</li>
-        </ul>
       </div>
     </div>
   );
