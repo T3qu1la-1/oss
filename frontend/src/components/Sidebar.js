@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Shield, Search, Home, Lock, Image, Compass, BookOpen, FileText, Flame } from 'lucide-react';
+import { Menu, Shield, Search, Home, Lock, Image, Compass, BookOpen, FileText, Flame, Globe } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = ({ currentPage, onPageChange }) => {
@@ -12,6 +12,7 @@ const Sidebar = ({ currentPage, onPageChange }) => {
     { id: 'osint', name: 'OSINT Dorks', icon: Search },
     { id: 'framework', name: 'OSINT Framework', icon: Compass },
     { id: 'boitata', name: 'Boitatá Tools', icon: Flame },
+    { id: 'geokit', name: 'GeoKit', icon: Globe },
     { id: 'academy', name: 'Academy', icon: BookOpen },
     { id: 'emoji', name: 'Emoji-Crypt', icon: Lock },
     { id: 'exif', name: 'EXIF Hunter', icon: Image },
