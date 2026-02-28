@@ -48,7 +48,7 @@ class MegaVulnerabilityScanner:
                     "body": body[:15000],
                     "url": str(response.url)
                 }
-        except Exception as e:
+        except Exception:
             return {"status_code": 0, "headers": {}, "body": "", "url": url}
     
     def vuln(self, scan_id, severity, title, desc, category, endpoint, payload, evidence, rec, cve):
@@ -914,7 +914,7 @@ class MegaVulnerabilityScanner:
             if r1["status_code"] == 200 and r2["status_code"] == 200:
                 if r1["body"] != r2["body"] and len(r1["body"]) > 50:
                     results.append(self.vuln(scan_id, "high", "IDOR Detectado",
-                        f"Acesso a recursos de outros usuários", "Authorization", url1,
+                        "Acesso a recursos de outros usuários", "Authorization", url1,
                         f"{ep1} vs {ep2}", "Dados diferentes retornados",
                         "Implemente controle de acesso", "CWE-639"))
                     return results
@@ -1162,7 +1162,7 @@ class MegaVulnerabilityScanner:
                 r = await self.make_request(url)
                 if any(key in r.get("body", "").lower() for key in ["ami-id", "instance-id", "credentials", "access_token"]):
                     results.append(self.vuln(scan_id, "critical", "Cloud Metadata SSRF",
-                        f"SSRF permite acesso a metadata da cloud", "SSRF", url,
+                        "SSRF permite acesso a metadata da cloud", "SSRF", url,
                         metadata_url, "Metadata acessível", "Bloqueie acesso a IPs de metadata", "CWE-918"))
                     return results
         return results
@@ -1240,7 +1240,7 @@ class MegaVulnerabilityScanner:
             r = await self.make_request(url)
             if r["status_code"] == 200:
                 results.append(self.vuln(scan_id, "high", "Path Confusion",
-                    f"Path confusion permite bypass de controle de acesso", "Authorization", url,
+                    "Path confusion permite bypass de controle de acesso", "Authorization", url,
                     p, f"Status: {r['status_code']}", "Normalize paths antes de validação", "CWE-41"))
                 break
         return results
@@ -1393,7 +1393,7 @@ class MegaVulnerabilityScanner:
                 location = r.get("headers", {}).get("location", "")
                 if r["status_code"] in [301, 302, 303, 307, 308] and "evil.com" in location:
                     results.append(self.vuln(scan_id, "critical", "OAuth Redirect URI Bypass",
-                        f"Validação de redirect_uri insuficiente", "Authorization", url,
+                        "Validação de redirect_uri insuficiente", "Authorization", url,
                         evil_url, f"Redirect para {location}",
                         "Valide redirect_uri contra whitelist", "CWE-601"))
                     return results
