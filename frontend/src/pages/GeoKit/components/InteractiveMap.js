@@ -240,7 +240,7 @@ const InteractiveMap = () => {
         >
           <Map
             mapStyle={MAP_STYLE}
-            mapLib={import('maplibre-gl')}
+            
           />
         </DeckGL>
 
