@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@deck.gl-community/editable-layers": "^9.2.5",
+    "@deck.gl/aggregation-layers": "^9.2.10",
+    "@deck.gl/core": "^9.2.10",
     "@deck.gl/layers": "^9.2.10",
     "@deck.gl/react": "^9.2.10",
     "@hookform/resolvers": "^5.0.1",
