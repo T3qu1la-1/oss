@@ -1449,7 +1449,7 @@ class MegaVulnerabilityScanner:
     # ==================== MAIN SCAN ====================
 
     async def scan_target(self, scan_id: str, target: str, scan_type: str, status_callback=None) -> List[Dict]:
-        """Executa scan completo com 70+ testes"""
+        """Executa scan completo com 73 testes de vulnerabilidades"""
         all_vulnerabilities = []
         
         tests = [
@@ -1477,34 +1477,63 @@ class MegaVulnerabilityScanner:
             ("File Upload", self.test_file_upload),
             # SSRF (19)
             ("SSRF", self.test_ssrf),
-            # Auth (20-25)
+            # Auth (20-24)
             ("Auth Bypass", self.test_auth_bypass),
             ("Default Credentials", self.test_default_credentials),
             ("JWT Vulnerabilities", self.test_jwt_vulnerabilities),
             ("Session Fixation", self.test_session_fixation),
             ("Brute Force", self.test_brute_force),
-            # Headers/Config (26-31)
+            # Headers/Config (25-30)
             ("Security Headers", self.test_security_headers),
             ("CORS", self.test_cors),
             ("SSL/TLS", self.test_ssl_tls),
             ("Cookie Security", self.test_cookie_security),
             ("HTTP Methods", self.test_http_methods),
             ("Server Info", self.test_server_info),
-            # Files (32-34)
+            # Files (31-33)
             ("Sensitive Files", self.test_sensitive_files),
             ("Backup Files", self.test_backup_files),
             ("Directory Listing", self.test_directory_listing),
-            # Redirects/CSRF (35-37)
+            # Redirects/CSRF (34-36)
             ("Open Redirect", self.test_open_redirect),
             ("CSRF", self.test_csrf),
             ("CRLF Injection", self.test_crlf_injection),
-            # Misc (38-43)
+            # Misc (37-42)
             ("Clickjacking", self.test_clickjacking),
             ("Host Header Injection", self.test_host_header_injection),
             ("Cache Poisoning", self.test_cache_poisoning),
             ("Error Messages", self.test_error_messages),
             ("IDOR", self.test_idor),
             ("Rate Limiting", self.test_rate_limiting),
+            # Advanced Tests (43-73)
+            ("HTTP Request Smuggling", self.test_http_request_smuggling),
+            ("HTTP Parameter Pollution", self.test_http_parameter_pollution),
+            ("WebSocket Security", self.test_websocket_security),
+            ("XML Injection", self.test_xml_injection),
+            ("CSV Injection", self.test_csv_injection),
+            ("Prototype Pollution", self.test_prototype_pollution),
+            ("Mass Assignment", self.test_mass_assignment),
+            ("Subdomain Takeover", self.test_subdomain_takeover),
+            ("Email Header Injection", self.test_email_injection),
+            ("Git Repository Exposure", self.test_git_exposure),
+            ("Environment File Exposure", self.test_env_exposure),
+            ("Docker/K8s Config Exposure", self.test_docker_exposure),
+            ("Cloud Metadata SSRF", self.test_cloud_metadata),
+            ("HTTP Response Splitting", self.test_response_splitting),
+            ("Race Condition", self.test_race_condition),
+            ("Insecure Deserialization", self.test_insecure_deserialization),
+            ("Path Confusion", self.test_path_confusion),
+            ("Unicode Bypass", self.test_unicode_bypass),
+            ("Timing Attack", self.test_timing_attack),
+            ("Memory Disclosure", self.test_memory_disclosure),
+            ("Null Byte Injection", self.test_null_byte_injection),
+            ("API Key Exposure", self.test_api_key_exposure),
+            ("GraphQL Introspection", self.test_graphql_introspection),
+            ("CORS Wildcard Misconfiguration", self.test_cors_wildcard),
+            ("OAuth Redirect URI Validation", self.test_oauth_redirect_uri),
+            ("DNS Rebinding", self.test_dns_rebinding),
+            ("JWT Algorithm Confusion", self.test_jwt_algorithm_confusion),
+            ("Weak SSL/TLS Ciphers", self.test_weak_cipher),
         ]
         
         async with self:
