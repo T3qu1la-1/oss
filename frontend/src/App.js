@@ -10,7 +10,7 @@ import BoitataTools from './pages/BoitataTools';
 import Academy from './pages/Academy';
 import EmojiCrypt from './pages/EmojiCrypt';
 import ExifHunter from './pages/ExifHunter';
-import GeoKit from './pages/GeoKit';
+import GeoKit from './pages/GeoKit/index';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
