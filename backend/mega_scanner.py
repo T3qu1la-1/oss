@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class MegaVulnerabilityScanner:
-    """Scanner de vulnerabilidades profissional com 70+ testes"""
+    """Scanner de vulnerabilidades profissional com 73 testes"""
     
     def __init__(self, websocket_manager=None):
         self.websocket_manager = websocket_manager
