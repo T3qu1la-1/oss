@@ -1,19 +1,43 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import DeckGL from '@deck.gl/react';
-import Map from 'react-map-gl/maplibre';
-import { HeatmapLayer } from '@deck.gl/aggregation-layers';
-import { ScatterplotLayer } from '@deck.gl/layers';
-import { FlyToInterpolator } from '@deck.gl/core';
+import React, { useState, useCallback, useRef } from 'react';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
 import { Upload, Loader2, X, Download, Zap } from 'lucide-react';
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+const INITIAL_CENTER = [0, 20];
+const INITIAL_ZOOM = 2;
 
-const INITIAL_VIEW_STATE = {
-  longitude: 0,
-  latitude: 20,
-  zoom: 2,
-  pitch: 0,
-  bearing: 0
+// Heatmap component
+const GeoClipHeatmap = ({ predictions }) => {
+  const map = useMap();
+
+  React.useEffect(() => {
+    if (!predictions || predictions.length === 0) return;
+
+    const heatData = predictions.map(p => [p.lat, p.lon, p.confidence]);
+    const heat = L.heatLayer(heatData, {
+      radius: 30,
+      blur: 20,
+      maxZoom: 10,
+      gradient: {
+        0.0: '#00ff00',
+        0.3: '#00ffff',
+        0.6: '#ffff00',
+        1.0: '#ff0000'
+      }
+    }).addTo(map);
+
+    // Fit bounds to predictions
+    const bounds = L.latLngBounds(predictions.map(p => [p.lat, p.lon]));
+    map.fitBounds(bounds, { padding: [50, 50], duration: 2 });
+
+    return () => {
+      map.removeLayer(heat);
+    };
+  }, [predictions, map]);
+
+  return null;
 };
 
 const GeoClipTool = () => {
@@ -21,8 +45,8 @@ const GeoClipTool = () => {
   const [imageFile, setImageFile] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [predictions, setPredictions] = useState(null);
-  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [selectedPrediction, setSelectedPrediction] = useState(null);
+  const mapRef = useRef();
 
   // Handle image upload
   const handleImageUpload = useCallback((e) => {
@@ -43,53 +67,26 @@ const GeoClipTool = () => {
     setImage(null);
     setImageFile(null);
     setPredictions(null);
-    setViewState(INITIAL_VIEW_STATE);
   }, []);
 
-  // Simulate GeoClip analysis (mock data)
+  // Simulate GeoClip analysis
   const analyzeImage = useCallback(async () => {
     if (!image) return;
     
     setIsAnalyzing(true);
     
-    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Generate mock predictions
-    // In real implementation, this would call the GeoClip API
-    const mockPredictions = generateMockPredictions();
-    setPredictions(mockPredictions);
-    
-    // Fit bounds to predictions
-    if (mockPredictions.length > 0) {
-      const coordinates = mockPredictions.map(p => [p.lon, p.lat]);
-      const bounds = calculateBounds(coordinates);
-      
-      setViewState({
-        ...viewState,
-        longitude: (bounds[0] + bounds[2]) / 2,
-        latitude: (bounds[1] + bounds[3]) / 2,
-        zoom: getBoundsZoom(bounds),
-        transitionDuration: 2000,
-        transitionInterpolator: new FlyToInterpolator()
-      });
-    }
-    
-    setIsAnalyzing(false);
-  }, [image, viewState]);
-
-  // Generate mock predictions
-  const generateMockPredictions = () => {
-    // Simulate predictions around a random location
     const baseLat = (Math.random() - 0.5) * 150;
     const baseLon = (Math.random() - 0.5) * 300;
     
-    const predictions = [];
+    const mockPredictions = [];
     for (let i = 0; i < 100; i++) {
       const distance = Math.random() * 5;
       const angle = Math.random() * Math.PI * 2;
       
-      predictions.push({
+      mockPredictions.push({
         lat: baseLat + Math.cos(angle) * distance,
         lon: baseLon + Math.sin(angle) * distance,
         confidence: Math.random(),
@@ -97,38 +94,10 @@ const GeoClipTool = () => {
       });
     }
     
-    // Sort by confidence
-    return predictions.sort((a, b) => b.confidence - a.confidence);
-  };
-
-  // Calculate bounds from coordinates
-  const calculateBounds = (coordinates) => {
-    let minLon = Infinity, maxLon = -Infinity;
-    let minLat = Infinity, maxLat = -Infinity;
-    
-    coordinates.forEach(([lon, lat]) => {
-      minLon = Math.min(minLon, lon);
-      maxLon = Math.max(maxLon, lon);
-      minLat = Math.min(minLat, lat);
-      maxLat = Math.max(maxLat, lat);
-    });
-    
-    return [minLon, minLat, maxLon, maxLat];
-  };
-
-  // Get appropriate zoom level for bounds
-  const getBoundsZoom = (bounds) => {
-    const latDiff = bounds[3] - bounds[1];
-    const lonDiff = bounds[2] - bounds[0];
-    const maxDiff = Math.max(latDiff, lonDiff);
-    
-    if (maxDiff > 100) return 2;
-    if (maxDiff > 50) return 3;
-    if (maxDiff > 20) return 4;
-    if (maxDiff > 10) return 5;
-    if (maxDiff > 5) return 6;
-    return 7;
-  };
+    mockPredictions.sort((a, b) => b.confidence - a.confidence);
+    setPredictions(mockPredictions);
+    setIsAnalyzing(false);
+  }, [image]);
 
   // Export results
   const exportResults = useCallback(() => {
@@ -145,71 +114,33 @@ const GeoClipTool = () => {
       }))
     };
     
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = 'geoclip-results.json';
     link.click();
+    URL.revokeObjectURL(url);
   }, [predictions, imageFile]);
 
-  // Deck.GL layers
-  const layers = useMemo(() => {
-    if (!predictions) return [];
-    
-    return [
-      // Heatmap layer
-      new HeatmapLayer({
-        id: 'geoclip-heatmap',
-        data: predictions,
-        getPosition: d => [d.lon, d.lat],
-        getWeight: d => d.confidence,
-        radiusPixels: 40,
-        intensity: 1,
-        threshold: 0.03,
-        colorRange: [
-          [0, 255, 0, 0],
-          [0, 255, 0, 100],
-          [0, 255, 255, 150],
-          [255, 255, 0, 200],
-          [255, 0, 0, 255]
-        ]
-      }),
-      
-      // Top predictions as points
-      new ScatterplotLayer({
-        id: 'top-predictions',
-        data: predictions.slice(0, 10),
-        getPosition: d => [d.lon, d.lat],
-        getFillColor: d => [
-          255 - d.rank * 20,
-          255,
-          d.rank * 20,
-          200
-        ],
-        getRadius: d => 50000 / d.rank,
-        radiusMinPixels: 5,
-        radiusMaxPixels: 30,
-        pickable: true,
-        autoHighlight: true,
-        onClick: info => setSelectedPrediction(info.object)
-      })
-    ];
-  }, [predictions]);
+  // Fly to prediction
+  const flyToPrediction = useCallback((pred) => {
+    setSelectedPrediction(pred);
+    if (mapRef.current) {
+      mapRef.current.flyTo([pred.lat, pred.lon], 8, { duration: 1 });
+    }
+  }, []);
 
   return (
     <div className="geoclip-tool">
-      {/* Header */}
       <div className="tool-header-section">
-        <h2><Zap size={24} /> GeoClip AI - GeolocalizaÃ§Ã£o por Imagem</h2>
-        <p>Upload de imagem para prediÃ§Ã£o de localizaÃ§Ã£o usando deep learning</p>
+        <h2><Zap size={24} /> GeoClip AI - Geolocalização por Imagem</h2>
+        <p>Upload de imagem para predição de localização usando deep learning</p>
       </div>
 
       <div className="geoclip-layout">
-        {/* Left Panel - Upload & Results */}
+        {/* Sidebar */}
         <div className="geoclip-sidebar">
-          {/* Upload Area */}
           {!image ? (
             <div className="upload-zone">
               <input 
@@ -254,18 +185,17 @@ const GeoClipTool = () => {
                 ) : (
                   <>
                     <Zap size={20} />
-                    Analisar LocalizaÃ§Ã£o
+                    Analisar Localização
                   </>
                 )}
               </button>
             </div>
           )}
 
-          {/* Results */}
           {predictions && (
             <div className="predictions-results">
               <div className="results-header">
-                <h3>Top 10 PrediÃ§Ãµes</h3>
+                <h3>Top 10 Predições</h3>
                 <button className="export-btn" onClick={exportResults}>
                   <Download size={16} /> Exportar
                 </button>
@@ -275,18 +205,8 @@ const GeoClipTool = () => {
                 {predictions.slice(0, 10).map(pred => (
                   <div 
                     key={pred.rank}
-                    className={`prediction-item ${selectedPrediction && selectedPrediction.rank === pred.rank ? 'selected' : ''}`}
-                    onClick={() => {
-                      setSelectedPrediction(pred);
-                      setViewState({
-                        ...viewState,
-                        longitude: pred.lon,
-                        latitude: pred.lat,
-                        zoom: 8,
-                        transitionDuration: 1000,
-                        transitionInterpolator: new FlyToInterpolator()
-                      });
-                    }}
+                    className={`prediction-item ${selectedPrediction?.rank === pred.rank ? 'selected' : ''}`}
+                    onClick={() => flyToPrediction(pred)}
                   >
                     <div className="pred-rank">#{pred.rank}</div>
                     <div className="pred-info">
@@ -294,7 +214,7 @@ const GeoClipTool = () => {
                         {pred.lat.toFixed(4)}, {pred.lon.toFixed(4)}
                       </div>
                       <div className="pred-confidence">
-                        ConfianÃ§a: {(pred.confidence * 100).toFixed(1)}%
+                        Confiança: {(pred.confidence * 100).toFixed(1)}%
                       </div>
                       <div className="confidence-bar">
                         <div 
@@ -310,56 +230,56 @@ const GeoClipTool = () => {
           )}
         </div>
 
-        {/* Right Panel - Map */}
+        {/* Map */}
         <div className="geoclip-map-container">
-          <DeckGL
-            initialViewState={INITIAL_VIEW_STATE}
-            viewState={viewState}
-            controller={true}
-            layers={layers}
-            onViewStateChange={({viewState}) => setViewState(viewState)}
+          <MapContainer
+            center={INITIAL_CENTER}
+            zoom={INITIAL_ZOOM}
+            style={{ height: '100%', width: '100%' }}
+            ref={mapRef}
           >
-            <Map
-              mapStyle={MAP_STYLE}
-              
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; OpenStreetMap'
             />
-          </DeckGL>
+            
+            {predictions && <GeoClipHeatmap predictions={predictions} />}
+          </MapContainer>
 
           {!predictions && (
             <div className="map-placeholder">
               <Zap size={64} />
-              <h3>Aguardando AnÃ¡lise</h3>
-              <p>Upload uma imagem e clique em "Analisar LocalizaÃ§Ã£o"</p>
+              <h3>Aguardando Análise</h3>
+              <p>Upload uma imagem e clique em "Analisar Localização"</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Info Section */}
+      {/* Info */}
       <div className="geoclip-info">
-        <h3>ð¤ Como Funciona o GeoClip:</h3>
+        <h3>🤖 Como Funciona o GeoClip:</h3>
         <div className="info-grid">
           <div className="info-card">
             <h4>1. Upload da Imagem</h4>
             <p>Envie uma foto de qualquer lugar do mundo</p>
           </div>
           <div className="info-card">
-            <h4>2. AnÃ¡lise com IA</h4>
-            <p>GeoClip analisa caracterÃ­sticas visuais (arquitetura, vegetaÃ§Ã£o, clima)</p>
+            <h4>2. Análise com IA</h4>
+            <p>GeoClip analisa características visuais</p>
           </div>
           <div className="info-card">
-            <h4>3. PrediÃ§Ãµes</h4>
-            <p>Recebe top-K localizaÃ§Ãµes mais provÃ¡veis com confianÃ§a</p>
+            <h4>3. Predições</h4>
+            <p>Top-K localizações mais prováveis</p>
           </div>
           <div className="info-card">
-            <h4>4. VisualizaÃ§Ã£o</h4>
+            <h4>4. Visualização</h4>
             <p>Heatmap interativo mostrando probabilidades</p>
           </div>
         </div>
         
         <div className="warning-box">
-          â ï¸ <strong>Demo Mode:</strong> Esta Ã© uma simulaÃ§Ã£o. Para anÃ¡lise real, Ã© necessÃ¡rio backend com modelo GeoClip.
-          O modelo real usa CLIP + embeddings geogrÃ¡ficos para prediÃ§Ã£o precisa.
+          ⚠️ <strong>Demo Mode:</strong> Esta é uma simulação. Para análise real, é necessário backend com modelo GeoClip.
         </div>
       </div>
     </div>

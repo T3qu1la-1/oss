@@ -1,86 +1,129 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import DeckGL from '@deck.gl/react';
-import Map from 'react-map-gl/maplibre';
-import { HeatmapLayer } from '@deck.gl/aggregation-layers';
-import { ScatterplotLayer, ArcLayer } from '@deck.gl/layers';
-import { FlyToInterpolator } from '@deck.gl/core';
-import { Target, Plus, Trash2, Download, Crosshair } from 'lucide-react';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
+import { Target, Plus, Trash2, Download, Crosshair, Zap } from 'lucide-react';
 
-const INITIAL_VIEW_STATE = {
-  longitude: -51.9253,
-  latitude: -14.235,
-  zoom: 4,
-  pitch: 45,
-  bearing: 0
+// Fix Leaflet default icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const INITIAL_CENTER = [-14.235, -51.9253];
+const INITIAL_ZOOM = 4;
+
+// Custom marker icon
+const customIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI4IiBmaWxsPSIjMDBmZjAwIiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==',
+  iconSize: [25, 25],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12]
+});
+
+// Heatmap component
+const HeatmapLayer = ({ points }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!points || points.length === 0) return;
+
+    const heatData = points.map(p => [p.lat, p.lng, p.intensity || 0.5]);
+    const heat = L.heatLayer(heatData, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      gradient: {
+        0.0: '#00ff00',
+        0.3: '#00ffff',
+        0.6: '#ffff00',
+        1.0: '#ff0000'
+      }
+    }).addTo(map);
+
+    return () => {
+      map.removeLayer(heat);
+    };
+  }, [points, map]);
+
+  return null;
 };
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+// Click handler component
+const MapClickHandler = ({ onMapClick, mode }) => {
+  useMapEvents({
+    click: (e) => {
+      if (mode === 'add') {
+        onMapClick(e.latlng);
+      }
+    }
+  });
+  return null;
+};
+
+// Fly to location component
+const FlyToLocation = ({ position, zoom }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (position) {
+      map.flyTo(position, zoom || 12, { duration: 2 });
+    }
+  }, [position, zoom, map]);
+  
+  return null;
+};
 
 const InteractiveMap = () => {
-  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [points, setPoints] = useState([]);
-  const [heatmapData, setHeatmapData] = useState([]);
+  const [heatmapPoints, setHeatmapPoints] = useState([]);
+  const [mode, setMode] = useState('view');
   const [selectedPoint, setSelectedPoint] = useState(null);
-  const [mode, setMode] = useState('view'); // view, add, heatmap
+  const [flyToPos, setFlyToPos] = useState(null);
   const [cursorCoords, setCursorCoords] = useState(null);
+  const mapRef = useRef();
 
-  // Add point on click
-  const handleClick = useCallback((info) => {
-    if (mode === 'add' && info.coordinate) {
-      const newPoint = {
-        id: Date.now(),
-        coordinates: info.coordinate,
-        name: `Point ${points.length + 1}`,
-        timestamp: new Date().toISOString()
-      };
-      setPoints([...points, newPoint]);
-    }
-  }, [mode, points]);
+  // Add point
+  const handleMapClick = useCallback((latlng) => {
+    const newPoint = {
+      id: Date.now(),
+      lat: latlng.lat,
+      lng: latlng.lng,
+      name: `Ponto ${points.length + 1}`,
+      timestamp: new Date().toISOString()
+    };
+    setPoints(prev => [...prev, newPoint]);
+  }, [points.length]);
 
-  // Update cursor coordinates
-  const handleHover = useCallback((info) => {
-    if (info.coordinate) {
-      setCursorCoords(info.coordinate);
-    }
-  }, []);
-
-  // Generate random heatmap data
+  // Generate heatmap
   const generateHeatmap = useCallback(() => {
     const data = [];
-    const centerLon = viewState.longitude;
-    const centerLat = viewState.latitude;
-    
-    for (let i = 0; i < 500; i++) {
+    const bounds = mapRef.current?.getBounds();
+    if (!bounds) return;
+
+    const center = bounds.getCenter();
+    for (let i = 0; i < 200; i++) {
       data.push({
-        position: [
-          centerLon + (Math.random() - 0.5) * 10,
-          centerLat + (Math.random() - 0.5) * 10
-        ],
-        weight: Math.random()
+        lat: center.lat + (Math.random() - 0.5) * 5,
+        lng: center.lng + (Math.random() - 0.5) * 5,
+        intensity: Math.random()
       });
     }
-    setHeatmapData(data);
-  }, [viewState]);
-
-  // Fly to location
-  const flyTo = useCallback((longitude, latitude, zoom = 12) => {
-    setViewState({
-      ...viewState,
-      longitude,
-      latitude,
-      zoom,
-      transitionDuration: 2000,
-      transitionInterpolator: new FlyToInterpolator()
-    });
-  }, [viewState]);
+    setHeatmapPoints(data);
+  }, []);
 
   // Delete point
   const deletePoint = useCallback((id) => {
-    setPoints(points.filter(p => p.id !== id));
-  }, [points]);
+    setPoints(prev => prev.filter(p => p.id !== id));
+    if (selectedPoint?.id === id) {
+      setSelectedPoint(null);
+    }
+  }, [selectedPoint]);
 
-  // Export points as GeoJSON
+  // Export points
   const exportPoints = useCallback(() => {
     const geojson = {
       type: 'FeatureCollection',
@@ -88,7 +131,7 @@ const InteractiveMap = () => {
         type: 'Feature',
         geometry: {
           type: 'Point',
-          coordinates: point.coordinates
+          coordinates: [point.lng, point.lat]
         },
         properties: {
           name: point.name,
@@ -98,66 +141,19 @@ const InteractiveMap = () => {
     };
     
     const dataStr = JSON.stringify(geojson, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = 'geokit-points.geojson';
     link.click();
+    URL.revokeObjectURL(url);
   }, [points]);
 
-  // Layers
-  const layers = useMemo(() => [
-    // Heatmap Layer
-    heatmapData.length > 0 && new HeatmapLayer({
-      id: 'heatmap',
-      data: heatmapData,
-      getPosition: d => d.position,
-      getWeight: d => d.weight,
-      radiusPixels: 50,
-      intensity: 1,
-      threshold: 0.05,
-      colorRange: [
-        [0, 255, 0, 0],
-        [0, 255, 0, 100],
-        [0, 255, 255, 150],
-        [255, 255, 0, 200],
-        [255, 0, 0, 255]
-      ]
-    }),
-
-    // Points Layer
-    points.length > 0 && new ScatterplotLayer({
-      id: 'points',
-      data: points,
-      getPosition: d => d.coordinates,
-      getFillColor: [0, 255, 0],
-      getRadius: 100,
-      radiusMinPixels: 5,
-      radiusMaxPixels: 50,
-      pickable: true,
-      autoHighlight: true,
-      onClick: info => setSelectedPoint(info.object),
-      updateTriggers: {
-        getRadius: selectedPoint ? selectedPoint.id : null
-      },
-      getRadius: d => selectedPoint && d.id === selectedPoint.id ? 150 : 100
-    }),
-
-    // Arc Layer (connections between points)
-    points.length > 1 && new ArcLayer({
-      id: 'arcs',
-      data: points.slice(0, -1).map((point, i) => ({
-        source: point.coordinates,
-        target: points[i + 1].coordinates
-      })),
-      getSourcePosition: d => d.source,
-      getTargetPosition: d => d.target,
-      getSourceColor: [0, 255, 0],
-      getTargetColor: [0, 255, 255],
-      getWidth: 2
-    })
-  ].filter(Boolean), [points, heatmapData, selectedPoint]);
+  // Fly to location
+  const flyTo = useCallback((lat, lng) => {
+    setFlyToPos([lat, lng]);
+  }, []);
 
   return (
     <div className="interactive-map-tool">
@@ -169,23 +165,20 @@ const InteractiveMap = () => {
             <button 
               className={`tool-btn ${mode === 'view' ? 'active' : ''}`}
               onClick={() => setMode('view')}
-              title="Visualização"
             >
               <Crosshair size={18} /> Visualizar
             </button>
             <button 
               className={`tool-btn ${mode === 'add' ? 'active' : ''}`}
               onClick={() => setMode('add')}
-              title="Adicionar Pontos"
             >
               <Plus size={18} /> Adicionar
             </button>
             <button 
               className="tool-btn"
               onClick={generateHeatmap}
-              title="Gerar Heatmap"
             >
-              <Target size={18} /> Heatmap
+              <Zap size={18} /> Heatmap
             </button>
           </div>
         </div>
@@ -197,7 +190,6 @@ const InteractiveMap = () => {
               className="tool-btn"
               onClick={exportPoints}
               disabled={points.length === 0}
-              title="Exportar GeoJSON"
             >
               <Download size={18} /> Exportar
             </button>
@@ -205,58 +197,83 @@ const InteractiveMap = () => {
               className="tool-btn danger"
               onClick={() => {
                 setPoints([]);
-                setHeatmapData([]);
+                setHeatmapPoints([]);
               }}
-              disabled={points.length === 0 && heatmapData.length === 0}
-              title="Limpar Tudo"
+              disabled={points.length === 0 && heatmapPoints.length === 0}
             >
               <Trash2 size={18} /> Limpar
             </button>
           </div>
         </div>
 
-        {/* Quick Locations */}
         <div className="toolbar-section">
           <h3>🌍 Localizações</h3>
           <div className="quick-locations">
-            <button onClick={() => flyTo(-51.9253, -14.235, 4)}>Brasil</button>
-            <button onClick={() => flyTo(-74.006, 40.7128, 10)}>New York</button>
-            <button onClick={() => flyTo(139.6917, 35.6895, 10)}>Tóquio</button>
-            <button onClick={() => flyTo(-0.1278, 51.5074, 10)}>Londres</button>
+            <button onClick={() => flyTo(-14.235, -51.9253)}>Brasil</button>
+            <button onClick={() => flyTo(40.7128, -74.006)}>New York</button>
+            <button onClick={() => flyTo(35.6895, 139.6917)}>Tóquio</button>
+            <button onClick={() => flyTo(51.5074, -0.1278)}>Londres</button>
+            <button onClick={() => flyTo(48.8566, 2.3522)}>Paris</button>
           </div>
         </div>
       </div>
 
-      {/* Map Container */}
-      <div className="map-container-3d">
-        <DeckGL
-          initialViewState={INITIAL_VIEW_STATE}
-          controller={true}
-          layers={layers}
-          onClick={handleClick}
-          onHover={handleHover}
-          onViewStateChange={({viewState}) => setViewState(viewState)}
-          getCursor={() => mode === 'add' ? 'crosshair' : 'grab'}
+      {/* Map */}
+      <div className="map-container-leaflet">
+        <MapContainer
+          center={INITIAL_CENTER}
+          zoom={INITIAL_ZOOM}
+          style={{ height: '100%', width: '100%' }}
+          ref={mapRef}
         >
-          <Map
-            mapStyle={MAP_STYLE}
-            
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
-        </DeckGL>
+          
+          <MapClickHandler onMapClick={handleMapClick} mode={mode} />
+          <FlyToLocation position={flyToPos} />
+          
+          {heatmapPoints.length > 0 && <HeatmapLayer points={heatmapPoints} />}
+          
+          {points.map((point, idx) => (
+            <React.Fragment key={point.id}>
+              <Marker 
+                position={[point.lat, point.lng]} 
+                icon={customIcon}
+                eventHandlers={{
+                  click: () => setSelectedPoint(point)
+                }}
+              >
+                <Popup>
+                  <div style={{ color: '#000' }}>
+                    <strong>{point.name}</strong><br />
+                    Lat: {point.lat.toFixed(6)}<br />
+                    Lng: {point.lng.toFixed(6)}
+                  </div>
+                </Popup>
+              </Marker>
+              
+              {idx > 0 && (
+                <Polyline 
+                  positions={[
+                    [points[idx - 1].lat, points[idx - 1].lng],
+                    [point.lat, point.lng]
+                  ]}
+                  color="#00ffff"
+                  weight={2}
+                  opacity={0.6}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </MapContainer>
 
-        {/* Cursor Coordinates */}
-        {cursorCoords && (
-          <div className="cursor-coords">
-            Lat: {cursorCoords[1].toFixed(6)}, Lon: {cursorCoords[0].toFixed(6)}
+        {mode === 'add' && (
+          <div className="mode-indicator">
+            ➕ Modo Adicionar - Clique no mapa para marcar pontos
           </div>
         )}
-
-        {/* View Info */}
-        <div className="view-info">
-          <div>Zoom: {viewState.zoom.toFixed(2)}</div>
-          <div>Pitch: {viewState.pitch.toFixed(0)}°</div>
-          <div>Bearing: {viewState.bearing.toFixed(0)}°</div>
-        </div>
       </div>
 
       {/* Points List */}
@@ -267,14 +284,12 @@ const InteractiveMap = () => {
             {points.map(point => (
               <div 
                 key={point.id} 
-                className={`point-item ${selectedPoint && selectedPoint.id === point.id ? 'selected' : ''}`}
-                onClick={() => flyTo(point.coordinates[0], point.coordinates[1])}
+                className={`point-item ${selectedPoint?.id === point.id ? 'selected' : ''}`}
+                onClick={() => flyTo(point.lat, point.lng)}
               >
                 <div className="point-info">
                   <strong>{point.name}</strong>
-                  <small>
-                    {point.coordinates[1].toFixed(4)}, {point.coordinates[0].toFixed(4)}
-                  </small>
+                  <small>{point.lat.toFixed(4)}, {point.lng.toFixed(4)}</small>
                 </div>
                 <button 
                   className="delete-btn"
@@ -295,12 +310,12 @@ const InteractiveMap = () => {
       <div className="map-info-panel">
         <h3>🎯 Funcionalidades:</h3>
         <ul>
-          <li>✓ Mapa 3D interativo com Deck.GL</li>
+          <li>✓ Mapa interativo com Leaflet.js</li>
           <li>✓ Heatmap com gradiente de cores</li>
           <li>✓ Marcação de pontos customizados</li>
-          <li>✓ Arcos conectando pontos</li>
+          <li>✓ Linhas conectando pontos</li>
           <li>✓ Exportação em GeoJSON</li>
-          <li>✓ Controle de pitch, bearing e zoom</li>
+          <li>✓ Quick locations (Brasil, NY, Tóquio, etc)</li>
         </ul>
       </div>
     </div>
