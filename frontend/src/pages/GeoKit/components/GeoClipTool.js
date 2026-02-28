@@ -199,4 +199,171 @@ const GeoClipTool = () => {
   }, [predictions]);
 
   return (
-    <div className=\"geoclip-tool\">\n      {/* Header */}\n      <div className=\"tool-header-section\">\n        <h2><Zap size={24} /> GeoClip AI - Geolocalização por Imagem</h2>\n        <p>Upload de imagem para predição de localização usando deep learning</p>\n      </div>\n\n      <div className=\"geoclip-layout\">\n        {/* Left Panel - Upload & Results */}\n        <div className=\"geoclip-sidebar\">\n          {/* Upload Area */}\n          {!image ? (\n            <div className=\"upload-zone\">\n              <input \n                type=\"file\" \n                accept=\"image/*\" \n                onChange={handleImageUpload}\n                id=\"geoclip-upload\"\n                style={{display: 'none'}}\n              />\n              <label htmlFor=\"geoclip-upload\" className=\"upload-label\">\n                <div className=\"upload-icon\">\n                  <Upload size={48} />\n                </div>\n                <h3>Upload de Imagem</h3>\n                <p>Arraste ou clique para selecionar</p>\n                <small>JPG, PNG, WebP (max 10MB)</small>\n              </label>\n            </div>\n          ) : (\n            <div className=\"image-preview-section\">\n              <div className=\"image-preview-header\">\n                <h3>Imagem Carregada</h3>\n                <button className=\"remove-btn\" onClick={removeImage}>\n                  <X size={20} />\n                </button>\n              </div>\n              \n              <div className=\"image-preview\">\n                <img src={image} alt=\"Uploaded\" />\n              </div>\n\n              <button \n                className={`analyze-button ${isAnalyzing ? 'analyzing' : ''}`}\n                onClick={analyzeImage}\n                disabled={isAnalyzing}\n              >\n                {isAnalyzing ? (\n                  <>\n                    <Loader2 className=\"spin\" size={20} />\n                    Analisando...\n                  </>\n                ) : (\n                  <>\n                    <Zap size={20} />\n                    Analisar Localização\n                  </>\n                )}\n              </button>\n            </div>\n          )}\n\n          {/* Results */}\n          {predictions && (\n            <div className=\"predictions-results\">\n              <div className=\"results-header\">\n                <h3>Top 10 Predições</h3>\n                <button className=\"export-btn\" onClick={exportResults}>\n                  <Download size={16} /> Exportar\n                </button>\n              </div>\n              \n              <div className=\"predictions-list\">\n                {predictions.slice(0, 10).map(pred => (\n                  <div \n                    key={pred.rank}\n                    className={`prediction-item ${selectedPrediction && selectedPrediction.rank === pred.rank ? 'selected' : ''}`}\n                    onClick={() => {\n                      setSelectedPrediction(pred);\n                      setViewState({\n                        ...viewState,\n                        longitude: pred.lon,\n                        latitude: pred.lat,\n                        zoom: 8,\n                        transitionDuration: 1000,\n                        transitionInterpolator: new FlyToInterpolator()\n                      });\n                    }}\n                  >\n                    <div className=\"pred-rank\">#{pred.rank}</div>\n                    <div className=\"pred-info\">\n                      <div className=\"pred-coords\">\n                        {pred.lat.toFixed(4)}, {pred.lon.toFixed(4)}\n                      </div>\n                      <div className=\"pred-confidence\">\n                        Confiança: {(pred.confidence * 100).toFixed(1)}%\n                      </div>\n                      <div className=\"confidence-bar\">\n                        <div \n                          className=\"confidence-fill\" \n                          style={{width: `${pred.confidence * 100}%`}}\n                        ></div>\n                      </div>\n                    </div>\n                  </div>\n                ))}\n              </div>\n            </div>\n          )}\n        </div>\n\n        {/* Right Panel - Map */}\n        <div className=\"geoclip-map-container\">\n          <DeckGL\n            initialViewState={INITIAL_VIEW_STATE}\n            viewState={viewState}\n            controller={true}\n            layers={layers}\n            onViewStateChange={({viewState}) => setViewState(viewState)}\n          >\n            <Map\n              mapStyle={MAP_STYLE}\n              mapLib={import('maplibre-gl')}\n            />\n          </DeckGL>\n\n          {!predictions && (\n            <div className=\"map-placeholder\">\n              <Zap size={64} />\n              <h3>Aguardando Análise</h3>\n              <p>Upload uma imagem e clique em \"Analisar Localização\"</p>\n            </div>\n          )}\n        </div>\n      </div>\n\n      {/* Info Section */}\n      <div className=\"geoclip-info\">\n        <h3>🤖 Como Funciona o GeoClip:</h3>\n        <div className=\"info-grid\">\n          <div className=\"info-card\">\n            <h4>1. Upload da Imagem</h4>\n            <p>Envie uma foto de qualquer lugar do mundo</p>\n          </div>\n          <div className=\"info-card\">\n            <h4>2. Análise com IA</h4>\n            <p>GeoClip analisa características visuais (arquitetura, vegetação, clima)</p>\n          </div>\n          <div className=\"info-card\">\n            <h4>3. Predições</h4>\n            <p>Recebe top-K localizações mais prováveis com confiança</p>\n          </div>\n          <div className=\"info-card\">\n            <h4>4. Visualização</h4>\n            <p>Heatmap interativo mostrando probabilidades</p>\n          </div>\n        </div>\n        \n        <div className=\"warning-box\">\n          ⚠️ <strong>Demo Mode:</strong> Esta é uma simulação. Para análise real, é necessário backend com modelo GeoClip.\n          O modelo real usa CLIP + embeddings geográficos para predição precisa.\n        </div>\n      </div>\n    </div>\n  );\n};\n\nexport default GeoClipTool;
+    <div className=\"geoclip-tool\">
+      {/* Header */}
+      <div className=\"tool-header-section\">
+        <h2><Zap size={24} /> GeoClip AI - Geolocalização por Imagem</h2>
+        <p>Upload de imagem para predição de localização usando deep learning</p>
+      </div>
+
+      <div className=\"geoclip-layout\">
+        {/* Left Panel - Upload & Results */}
+        <div className=\"geoclip-sidebar\">
+          {/* Upload Area */}
+          {!image ? (
+            <div className=\"upload-zone\">
+              <input 
+                type=\"file\" 
+                accept=\"image/*\" 
+                onChange={handleImageUpload}
+                id=\"geoclip-upload\"
+                style={{display: 'none'}}
+              />
+              <label htmlFor=\"geoclip-upload\" className=\"upload-label\">
+                <div className=\"upload-icon\">
+                  <Upload size={48} />
+                </div>
+                <h3>Upload de Imagem</h3>
+                <p>Arraste ou clique para selecionar</p>
+                <small>JPG, PNG, WebP (max 10MB)</small>
+              </label>
+            </div>
+          ) : (
+            <div className=\"image-preview-section\">
+              <div className=\"image-preview-header\">
+                <h3>Imagem Carregada</h3>
+                <button className=\"remove-btn\" onClick={removeImage}>
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className=\"image-preview\">
+                <img src={image} alt=\"Uploaded\" />
+              </div>
+
+              <button 
+                className={`analyze-button ${isAnalyzing ? 'analyzing' : ''}`}
+                onClick={analyzeImage}
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className=\"spin\" size={20} />
+                    Analisando...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={20} />
+                    Analisar Localização
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Results */}
+          {predictions && (
+            <div className=\"predictions-results\">
+              <div className=\"results-header\">
+                <h3>Top 10 Predições</h3>
+                <button className=\"export-btn\" onClick={exportResults}>
+                  <Download size={16} /> Exportar
+                </button>
+              </div>
+              
+              <div className=\"predictions-list\">
+                {predictions.slice(0, 10).map(pred => (
+                  <div 
+                    key={pred.rank}
+                    className={`prediction-item ${selectedPrediction && selectedPrediction.rank === pred.rank ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedPrediction(pred);
+                      setViewState({
+                        ...viewState,
+                        longitude: pred.lon,
+                        latitude: pred.lat,
+                        zoom: 8,
+                        transitionDuration: 1000,
+                        transitionInterpolator: new FlyToInterpolator()
+                      });
+                    }}
+                  >
+                    <div className=\"pred-rank\">#{pred.rank}</div>
+                    <div className=\"pred-info\">
+                      <div className=\"pred-coords\">
+                        {pred.lat.toFixed(4)}, {pred.lon.toFixed(4)}
+                      </div>
+                      <div className=\"pred-confidence\">
+                        Confiança: {(pred.confidence * 100).toFixed(1)}%
+                      </div>
+                      <div className=\"confidence-bar\">
+                        <div 
+                          className=\"confidence-fill\" 
+                          style={{width: `${pred.confidence * 100}%`}}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Panel - Map */}
+        <div className=\"geoclip-map-container\">
+          <DeckGL
+            initialViewState={INITIAL_VIEW_STATE}
+            viewState={viewState}
+            controller={true}
+            layers={layers}
+            onViewStateChange={({viewState}) => setViewState(viewState)}
+          >
+            <Map
+              mapStyle={MAP_STYLE}
+              mapLib={import('maplibre-gl')}
+            />
+          </DeckGL>
+
+          {!predictions && (
+            <div className=\"map-placeholder\">
+              <Zap size={64} />
+              <h3>Aguardando Análise</h3>
+              <p>Upload uma imagem e clique em \"Analisar Localização\"</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Info Section */}
+      <div className=\"geoclip-info\">
+        <h3>🤖 Como Funciona o GeoClip:</h3>
+        <div className=\"info-grid\">
+          <div className=\"info-card\">
+            <h4>1. Upload da Imagem</h4>
+            <p>Envie uma foto de qualquer lugar do mundo</p>
+          </div>
+          <div className=\"info-card\">
+            <h4>2. Análise com IA</h4>
+            <p>GeoClip analisa características visuais (arquitetura, vegetação, clima)</p>
+          </div>
+          <div className=\"info-card\">
+            <h4>3. Predições</h4>
+            <p>Recebe top-K localizações mais prováveis com confiança</p>
+          </div>
+          <div className=\"info-card\">
+            <h4>4. Visualização</h4>
+            <p>Heatmap interativo mostrando probabilidades</p>
+          </div>
+        </div>
+        
+        <div className=\"warning-box\">
+          ⚠️ <strong>Demo Mode:</strong> Esta é uma simulação. Para análise real, é necessário backend com modelo GeoClip.
+          O modelo real usa CLIP + embeddings geográficos para predição precisa.
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GeoClipTool;
