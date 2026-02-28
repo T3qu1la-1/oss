@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import DeckGL from '@deck.gl/react';
-import { Map } from 'react-map-gl';
+import Map from 'react-map-gl/maplibre';
 import { ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import { Search, Loader2, MapPin, Navigation, Download } from 'lucide-react';
