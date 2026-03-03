@@ -16,6 +16,11 @@ import GeoKit from './pages/GeoKit/index';
 import UsernameSearch from './pages/UsernameSearch';
 import Generators from './pages/Generators';
 import PayloadGenerator from './pages/PayloadGenerator';
+import APITester from './pages/APITester';
+import DataVisualizer from './pages/DataVisualizer';
+import WebsiteCloner from './pages/WebsiteCloner';
+import ReverseImageSearch from './pages/ReverseImageSearch';
+import FaceRecognition from './pages/FaceRecognition';
 import Sidebar from './components/Sidebar';
 import './styles/global.css';
 import './App.css';
@@ -55,19 +60,19 @@ const AppContent = () => {
       case 'username-search':
         return <UsernameSearch />;
       case 'face-recognition':
-        return <div className="tool-page"><h1>FACE RECOGNITION - EM DESENVOLVIMENTO</h1></div>;
+        return <FaceRecognition />;
       case 'generators':
         return <Generators />;
       case 'payload-gen':
         return <PayloadGenerator />;
       case 'api-tester':
-        return <div className="tool-page"><h1>API SECURITY TESTER - EM DESENVOLVIMENTO</h1></div>;
+        return <APITester />;
       case 'data-viz':
-        return <div className="tool-page"><h1>DATA VISUALIZER - EM DESENVOLVIMENTO</h1></div>;
+        return <DataVisualizer />;
       case 'website-cloner':
-        return <div className="tool-page"><h1>WEBSITE CLONER - EM DESENVOLVIMENTO</h1></div>;
+        return <WebsiteCloner />;
       case 'reverse-image':
-        return <div className="tool-page"><h1>REVERSE IMAGE SEARCH - EM DESENVOLVIMENTO</h1></div>;
+        return <ReverseImageSearch />;
       case 'reports':
         return <Reports />;
       case 'osint':

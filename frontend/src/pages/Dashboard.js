@@ -41,7 +41,6 @@ const Dashboard = ({ onNavigate }) => {
           <span className="prompt-separator">:</span>
           <span className="prompt-path">~/dashboard</span>
           <span className="prompt-symbol">$</span>
-          <span className="prompt-cursor">_</span>
         </div>
         <div className="system-status">
           <span className="status-dot"></span>

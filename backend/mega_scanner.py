@@ -25,9 +25,10 @@ class MegaVulnerabilityScanner:
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=10),
-            connector=aiohttp.TCPConnector(ssl=False, limit=20)
+            timeout=aiohttp.ClientTimeout(total=5),
+            connector=aiohttp.TCPConnector(ssl=False, limit=50)
         )
+        self.semaphore = asyncio.Semaphore(30)
         return self
         
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -37,17 +38,18 @@ class MegaVulnerabilityScanner:
     async def make_request(self, url: str, method: str = "GET", headers: Dict = None, 
                           data: Any = None, allow_redirects: bool = False) -> Dict:
         try:
-            async with self.session.request(
-                method=method, url=url, headers=headers or {},
-                data=data, allow_redirects=allow_redirects
-            ) as response:
-                body = await response.text()
-                return {
-                    "status_code": response.status,
-                    "headers": dict(response.headers),
-                    "body": body[:15000],
-                    "url": str(response.url)
-                }
+            async with self.semaphore:
+                async with self.session.request(
+                    method=method, url=url, headers=headers or {},
+                    data=data, allow_redirects=allow_redirects
+                ) as response:
+                    body = await response.text()
+                    return {
+                        "status_code": response.status,
+                        "headers": dict(response.headers),
+                        "body": body[:10000],
+                        "url": str(response.url)
+                    }
         except Exception:
             return {"status_code": 0, "headers": {}, "body": "", "url": url}
     
