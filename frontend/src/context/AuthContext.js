@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const AuthContext = createContext();
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || 'https://meu-site-23.preview.emergentagent.com';
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'https://projeto-completo-5.preview.emergentagent.com';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
