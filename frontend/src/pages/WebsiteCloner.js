@@ -2,32 +2,41 @@ import React, { useState } from 'react';
 import { Globe, Download, Copy, Zap } from 'lucide-react';
 import './ToolPages.css';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+
 const WebsiteCloner = () => {
   const [targetUrl, setTargetUrl] = useState('');
   const [cloning, setCloning] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
 
   const handleClone = async () => {
     if (!targetUrl) return;
     setCloning(true);
+    setError('');
     
     try {
-      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-      const data = await response.json();
+      const response = await fetch(`${API_URL}/api/tools/clone-website`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: targetUrl })
+      });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to clone');
+      }
+      
+      const data = await response.json();
       setResult({
-        html: data.contents || 'Error fetching HTML',
-        assets: [
-          { type: 'HTML', count: 1, size: `${(data.contents?.length / 1024).toFixed(2)} KB` }
-        ],
+        html: data.html,
+        size: `${(data.size / 1024).toFixed(2)} KB`,
+        status: data.status,
         success: true
       });
-    } catch (error) {
-      setResult({
-        html: `Error: ${error.message}`,
-        assets: [],
-        success: false
-      });
+    } catch (err) {
+      setError(err.message);
+      setResult(null);
     }
     
     setCloning(false);
@@ -49,7 +58,7 @@ const WebsiteCloner = () => {
           <Globe size={32} />
           <div>
             <h1>WEBSITE CLONER</h1>
-            <p>&gt; Clone websites for analysis</p>
+            <p>&gt; Clone websites for real</p>
           </div>
         </div>
       </div>
@@ -77,21 +86,27 @@ const WebsiteCloner = () => {
           </div>
         </div>
 
-        {result && (
+        {error && (
+          <div className='alert-box' style={{borderLeftColor: '#f00', color: '#f00'}}>
+            <span>ERROR: {error}</span>
+          </div>
+        )}
+
+        {result && result.success && (
           <>
-            {result.success && result.assets.length > 0 && (
-              <div className='stats-row'>
-                {result.assets.map((asset, index) => (
-                  <div key={index} className='stat-box'>
-                    <div className='stat-value'>{asset.count}</div>
-                    <div className='stat-label'>{asset.type} ({asset.size})</div>
-                  </div>
-                ))}
+            <div className='stats-row'>
+              <div className='stat-box success'>
+                <div className='stat-value'>{result.status}</div>
+                <div className='stat-label'>STATUS</div>
               </div>
-            )}
+              <div className='stat-box'>
+                <div className='stat-value'>{result.size}</div>
+                <div className='stat-label'>SIZE</div>
+              </div>
+            </div>
 
             <div className='input-group-tool'>
-              <label>CLONED HTML</label>
+              <label>CLONED HTML ({result.html.length.toLocaleString()} characters)</label>
               <textarea value={result.html} readOnly style={{minHeight: '300px'}} />
             </div>
 
@@ -111,7 +126,7 @@ const WebsiteCloner = () => {
         <div className='alert-box'>
           <Globe size={18} />
           <span>
-            WARNING: Only clone websites you own or have permission. May not work on sites with CORS.
+            Only clone websites you own. Some sites may block requests (CORS/bot detection).
           </span>
         </div>
       </div>

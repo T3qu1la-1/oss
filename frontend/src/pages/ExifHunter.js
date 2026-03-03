@@ -2,50 +2,61 @@ import React, { useState } from 'react';
 import { Image, Upload, FileSearch, Download, Copy } from 'lucide-react';
 import './ToolPages.css';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+
 const ExifHunter = () => {
-  const [imageUrl, setImageUrl] = useState('');
   const [file, setFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
   const [metadata, setMetadata] = useState(null);
   const [extracting, setExtracting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setImageUrl(URL.createObjectURL(selectedFile));
+      setImagePreview(URL.createObjectURL(selectedFile));
+      setError('');
     }
   };
 
-  const handleExtract = () => {
-    if (!imageUrl && !file) return;
+  const handleExtract = async () => {
+    if (!file) return;
     setExtracting(true);
+    setError('');
     
-    setTimeout(() => {
-      setMetadata({
-        camera: 'iPhone 13 Pro',
-        date: '2024-03-03 14:30:22',
-        gps: {
-          lat: -23.5505,
-          lng: -46.6333,
-          location: 'São Paulo, Brazil'
-        },
-        settings: {
-          iso: '400',
-          aperture: 'f/1.8',
-          shutter: '1/120',
-          focal: '26mm'
-        },
-        software: 'Adobe Photoshop 2024',
-        resolution: '4032 x 3024',
-        size: '2.4 MB'
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`${API_URL}/api/tools/extract-exif`, {
+        method: 'POST',
+        body: formData
       });
-      setExtracting(false);
-    }, 1500);
+      
+      if (!response.ok) throw new Error('Failed to extract EXIF');
+      
+      const data = await response.json();
+      setMetadata(data);
+    } catch (err) {
+      setError(err.message);
+    }
+    
+    setExtracting(false);
   };
 
   const copyMetadata = () => {
     const text = JSON.stringify(metadata, null, 2);
     navigator.clipboard.writeText(text);
+  };
+
+  const downloadJSON = () => {
+    const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'exif_data.json';
+    a.click();
   };
 
   return (
@@ -55,34 +66,29 @@ const ExifHunter = () => {
           <Image size={32} />
           <div>
             <h1>EXIF HUNTER</h1>
-            <p>&gt; Extract image metadata & GPS</p>
+            <p>&gt; Extract real image metadata & GPS</p>
           </div>
         </div>
       </div>
 
       <div className='tool-content'>
-        <div className='grid-2'>
-          <div className='input-group-tool'>
-            <label>IMAGE URL</label>
-            <input
-              type='text'
-              placeholder='https://example.com/photo.jpg'
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-            />
-          </div>
-          <div className='input-group-tool'>
-            <label>OR UPLOAD FILE</label>
-            <input
-              type='file'
-              accept='image/*'
-              onChange={handleFileChange}
-              style={{padding: '0.5rem'}}
-            />
-          </div>
+        <div className='input-group-tool'>
+          <label>UPLOAD IMAGE FILE</label>
+          <input
+            type='file'
+            accept='image/*'
+            onChange={handleFileChange}
+            style={{padding: '0.5rem'}}
+          />
         </div>
 
-        <button className='btn-tool' onClick={handleExtract} disabled={extracting || (!imageUrl && !file)}>
+        {error && (
+          <div className='alert-box' style={{borderLeftColor: '#f00', color: '#f00'}}>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <button className='btn-tool' onClick={handleExtract} disabled={extracting || !file}>
           {extracting ? 'EXTRACTING...' : (
             <>
               <FileSearch size={18} />
@@ -91,9 +97,9 @@ const ExifHunter = () => {
           )}
         </button>
 
-        {imageUrl && (
+        {imagePreview && (
           <div className='output-box' style={{textAlign: 'center', marginTop: '1rem'}}>
-            <img src={imageUrl} alt='Target' style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid #333'}} onError={(e) => e.target.style.display = 'none'} />
+            <img src={imagePreview} alt='Target' style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid #333'}} />
           </div>
         )}
 
@@ -102,11 +108,11 @@ const ExifHunter = () => {
             <div className='stats-row'>
               <button className='btn-tool btn-secondary' onClick={copyMetadata}>
                 <Copy size={18} />
-                COPY ALL
+                COPY JSON
               </button>
-              <button className='btn-tool btn-secondary'>
+              <button className='btn-tool btn-secondary' onClick={downloadJSON}>
                 <Download size={18} />
-                EXPORT JSON
+                DOWNLOAD JSON
               </button>
             </div>
 
@@ -117,16 +123,23 @@ const ExifHunter = () => {
                   Device: {metadata.camera}<br/>
                   Date: {metadata.date}<br/>
                   Resolution: {metadata.resolution}<br/>
-                  Size: {metadata.size}
+                  Size: {metadata.size}<br/>
+                  Format: {metadata.format}
                 </div>
               </div>
 
               <div className='result-card found'>
                 <h3 style={{marginBottom: '1rem'}}>GPS LOCATION</h3>
                 <div className='code-block'>
-                  Latitude: {metadata.gps.lat}<br/>
-                  Longitude: {metadata.gps.lng}<br/>
-                  Location: {metadata.gps.location}
+                  {metadata.gps.lat && metadata.gps.lng ? (
+                    <>
+                      Latitude: {metadata.gps.lat}<br/>
+                      Longitude: {metadata.gps.lng}<br/>
+                      <a href={`https://www.google.com/maps?q=${metadata.gps.lat},${metadata.gps.lng}`} target='_blank' rel='noopener noreferrer' style={{color: '#0f0'}}>View on Google Maps</a>
+                    </>
+                  ) : (
+                    'No GPS data found'
+                  )}
                 </div>
               </div>
 
@@ -136,7 +149,7 @@ const ExifHunter = () => {
                   ISO: {metadata.settings.iso}<br/>
                   Aperture: {metadata.settings.aperture}<br/>
                   Shutter: {metadata.settings.shutter}<br/>
-                  Focal Length: {metadata.settings.focal}
+                  Focal: {metadata.settings.focal}
                 </div>
               </div>
 

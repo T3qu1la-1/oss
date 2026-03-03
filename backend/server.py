@@ -301,6 +301,10 @@ logger = logging.getLogger(__name__)
 # Include auth routes
 app.include_router(auth_router)
 
+# Import and include tools routes
+from routes.tools_routes import router as tools_router
+app.include_router(tools_router, prefix="/api/tools", tags=["tools"])
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
