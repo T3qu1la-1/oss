@@ -25,10 +25,10 @@ class MegaVulnerabilityScanner:
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=5),
-            connector=aiohttp.TCPConnector(ssl=False, limit=50)
+            timeout=aiohttp.ClientTimeout(total=3),  # Reduzir de 5s para 3s
+            connector=aiohttp.TCPConnector(ssl=False, limit=100)  # Aumentar de 50 para 100
         )
-        self.semaphore = asyncio.Semaphore(30)
+        self.semaphore = asyncio.Semaphore(50)  # Aumentar de 30 para 50 requisições paralelas
         return self
         
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -1618,7 +1618,7 @@ class MegaVulnerabilityScanner:
                     if vulns:
                         all_vulnerabilities.extend(vulns)
                     
-                    await asyncio.sleep(0.3)
+                    await asyncio.sleep(0.1)  # Reduzir delay de 0.3s para 0.1s
                     
                 except Exception as e:
                     logger.error(f"Test {name} failed: {e}")

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
+from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,8 +12,9 @@ from datetime import datetime, timezone
 from mega_scanner import MegaVulnerabilityScanner
 import asyncio
 
-# Import auth routes
+# Import auth routes and utilities
 from routes.auth_routes import router as auth_router
+from auth import get_current_user
 
 
 ROOT_DIR = Path(__file__).parent
@@ -72,6 +73,7 @@ class Scan(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None  # ID do usuário que criou o scan
     name: str
     target: str
     scanType: str
@@ -133,12 +135,13 @@ async def get_status_checks():
 
 # Scanner routes
 @api_router.post("/scans", response_model=Scan)
-async def create_scan(scan_input: ScanCreate, background_tasks: BackgroundTasks):
-    """Criar novo scan"""
+async def create_scan(scan_input: ScanCreate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Criar novo scan (autenticado)"""
     scan = Scan(
         name=scan_input.name,
         target=scan_input.target,
         scanType=scan_input.scanType,
+        user_id=current_user["id"],  # Associar ao usuário autenticado
         status="pending",
         startedAt=datetime.now(timezone.utc)
     )
@@ -217,9 +220,9 @@ async def run_scan(scan_id: str, target: str, scan_type: str):
         )
 
 @api_router.get("/scans", response_model=List[Scan])
-async def get_scans():
-    """Listar todos os scans"""
-    scans = await db.scans.find({}, {"_id": 0}).sort("createdAt", -1).to_list(100)
+async def get_scans(current_user: dict = Depends(get_current_user)):
+    """Listar scans do usuário autenticado"""
+    scans = await db.scans.find({"user_id": current_user["id"]}, {"_id": 0}).sort("createdAt", -1).to_list(100)
     for scan in scans:
         if scan.get('startedAt') and isinstance(scan['startedAt'], str):
             scan['startedAt'] = datetime.fromisoformat(scan['startedAt'])
@@ -230,9 +233,9 @@ async def get_scans():
     return scans
 
 @api_router.get("/scans/{scan_id}", response_model=Scan)
-async def get_scan(scan_id: str):
-    """Obter scan específico"""
-    scan = await db.scans.find_one({"id": scan_id}, {"_id": 0})
+async def get_scan(scan_id: str, current_user: dict = Depends(get_current_user)):
+    """Obter scan específico (apenas do usuário)"""
+    scan = await db.scans.find_one({"id": scan_id, "user_id": current_user["id"]}, {"_id": 0})
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     
@@ -245,8 +248,13 @@ async def get_scan(scan_id: str):
     return scan
 
 @api_router.get("/scans/{scan_id}/vulnerabilities", response_model=List[Vulnerability])
-async def get_vulnerabilities(scan_id: str):
-    """Listar vulnerabilidades de um scan"""
+async def get_vulnerabilities(scan_id: str, current_user: dict = Depends(get_current_user)):
+    """Listar vulnerabilidades de um scan (apenas do usuário)"""
+    # Verificar se o scan pertence ao usuário
+    scan = await db.scans.find_one({"id": scan_id, "user_id": current_user["id"]})
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    
     vulns = await db.vulnerabilities.find({"scan_id": scan_id}, {"_id": 0}).to_list(1000)
     for vuln in vulns:
         if isinstance(vuln['createdAt'], str):
@@ -254,12 +262,16 @@ async def get_vulnerabilities(scan_id: str):
     return vulns
 
 @api_router.get("/stats")
-async def get_stats():
-    """Estatísticas gerais"""
-    total_scans = await db.scans.count_documents({})
-    total_vulns = await db.vulnerabilities.count_documents({})
-    critical_vulns = await db.vulnerabilities.count_documents({"severity": "critical"})
-    high_vulns = await db.vulnerabilities.count_documents({"severity": "high"})
+async def get_stats(current_user: dict = Depends(get_current_user)):
+    """Estatísticas do usuário autenticado"""
+    # Buscar IDs dos scans do usuário
+    user_scans = await db.scans.find({"user_id": current_user["id"]}, {"id": 1}).to_list(1000)
+    scan_ids = [s["id"] for s in user_scans]
+    
+    total_scans = len(scan_ids)
+    total_vulns = await db.vulnerabilities.count_documents({"scan_id": {"$in": scan_ids}})
+    critical_vulns = await db.vulnerabilities.count_documents({"scan_id": {"$in": scan_ids}, "severity": "critical"})
+    high_vulns = await db.vulnerabilities.count_documents({"scan_id": {"$in": scan_ids}, "severity": "high"})
     
     return {
         "totalScans": total_scans,
