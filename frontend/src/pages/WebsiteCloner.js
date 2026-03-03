@@ -11,19 +11,35 @@ const WebsiteCloner = () => {
     if (!targetUrl) return;
     setCloning(true);
     
-    setTimeout(() => {
+    try {
+      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+      const data = await response.json();
+      
       setResult({
-        html: `<!DOCTYPE html>\n<html>\n  <head>\n    <title>Cloned Site</title>\n  </head>\n  <body>\n    <h1>Site Clone Complete</h1>\n    <p>Original: ${targetUrl}</p>\n  </body>\n</html>`,
+        html: data.contents || 'Error fetching HTML',
         assets: [
-          { type: 'CSS', count: 5, size: '120 KB' },
-          { type: 'JS', count: 8, size: '450 KB' },
-          { type: 'Images', count: 23, size: '2.3 MB' },
-          { type: 'Fonts', count: 3, size: '180 KB' }
+          { type: 'HTML', count: 1, size: `${(data.contents?.length / 1024).toFixed(2)} KB` }
         ],
         success: true
       });
-      setCloning(false);
-    }, 2000);
+    } catch (error) {
+      setResult({
+        html: `Error: ${error.message}`,
+        assets: [],
+        success: false
+      });
+    }
+    
+    setCloning(false);
+  };
+
+  const downloadHTML = () => {
+    const blob = new Blob([result.html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cloned_site.html';
+    a.click();
   };
 
   return (
@@ -33,7 +49,7 @@ const WebsiteCloner = () => {
           <Globe size={32} />
           <div>
             <h1>WEBSITE CLONER</h1>
-            <p>&gt; Clone websites for testing and analysis</p>
+            <p>&gt; Clone websites for analysis</p>
           </div>
         </div>
       </div>
@@ -53,7 +69,7 @@ const WebsiteCloner = () => {
                 {cloning ? 'CLONING...' : (
                   <>
                     <Zap size={18} />
-                    CLONE SITE
+                    CLONE
                   </>
                 )}
               </button>
@@ -63,14 +79,16 @@ const WebsiteCloner = () => {
 
         {result && (
           <>
-            <div className='stats-row'>
-              {result.assets.map((asset, index) => (
-                <div key={index} className='stat-box'>
-                  <div className='stat-value'>{asset.count}</div>
-                  <div className='stat-label'>{asset.type} ({asset.size})</div>
-                </div>
-              ))}
-            </div>
+            {result.success && result.assets.length > 0 && (
+              <div className='stats-row'>
+                {result.assets.map((asset, index) => (
+                  <div key={index} className='stat-box'>
+                    <div className='stat-value'>{asset.count}</div>
+                    <div className='stat-label'>{asset.type} ({asset.size})</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className='input-group-tool'>
               <label>CLONED HTML</label>
@@ -82,9 +100,9 @@ const WebsiteCloner = () => {
                 <Copy size={18} />
                 COPY HTML
               </button>
-              <button className='btn-tool btn-secondary'>
+              <button className='btn-tool btn-secondary' onClick={downloadHTML}>
                 <Download size={18} />
-                DOWNLOAD ZIP
+                DOWNLOAD
               </button>
             </div>
           </>
@@ -93,8 +111,7 @@ const WebsiteCloner = () => {
         <div className='alert-box'>
           <Globe size={18} />
           <span>
-            WARNING: Only clone websites you own or have permission to clone. 
-            Unauthorized cloning may violate laws and terms of service.
+            WARNING: Only clone websites you own or have permission. May not work on sites with CORS.
           </span>
         </div>
       </div>

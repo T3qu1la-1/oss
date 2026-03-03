@@ -4,11 +4,12 @@ import './ToolPages.css';
 
 const FaceRecognition = () => {
   const [imageUrl, setImageUrl] = useState('');
+  const [file, setFile] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [results, setResults] = useState(null);
 
   const handleAnalyze = () => {
-    if (!imageUrl) return;
+    if (!imageUrl && !file) return;
     setAnalyzing(true);
     
     setTimeout(() => {
@@ -32,6 +33,14 @@ const FaceRecognition = () => {
     }, 2000);
   };
 
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setImageUrl(URL.createObjectURL(selectedFile));
+    }
+  };
+
   return (
     <div className='tool-page'>
       <div className='tool-header'>
@@ -45,30 +54,38 @@ const FaceRecognition = () => {
       </div>
 
       <div className='tool-content'>
-        <div className='search-box'>
+        <div className='grid-2'>
           <div className='input-group-tool'>
             <label>IMAGE URL</label>
-            <div className='input-with-button'>
-              <input
-                type='text'
-                placeholder='https://example.com/face.jpg'
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-              />
-              <button className='btn-tool' onClick={handleAnalyze} disabled={analyzing || !imageUrl}>
-                {analyzing ? 'ANALYZING...' : (
-                  <>
-                    <Zap size={18} />
-                    ANALYZE
-                  </>
-                )}
-              </button>
-            </div>
+            <input
+              type='text'
+              placeholder='https://example.com/face.jpg'
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+            />
+          </div>
+          <div className='input-group-tool'>
+            <label>OR UPLOAD FILE</label>
+            <input
+              type='file'
+              accept='image/*'
+              onChange={handleFileChange}
+              style={{padding: '0.5rem'}}
+            />
           </div>
         </div>
 
+        <button className='btn-tool' onClick={handleAnalyze} disabled={analyzing || (!imageUrl && !file)}>
+          {analyzing ? 'ANALYZING...' : (
+            <>
+              <Zap size={18} />
+              ANALYZE
+            </>
+          )}
+        </button>
+
         {imageUrl && (
-          <div className='output-box' style={{textAlign: 'center'}}>
+          <div className='output-box' style={{textAlign: 'center', marginTop: '1rem'}}>
             <img src={imageUrl} alt='Face' style={{maxWidth: '100%', maxHeight: '400px', border: '1px solid #333'}} onError={(e) => e.target.style.display = 'none'} />
           </div>
         )}
@@ -78,11 +95,11 @@ const FaceRecognition = () => {
             <div className='stats-row'>
               <div className='stat-box success'>
                 <div className='stat-value'>{results.faces}</div>
-                <div className='stat-label'>FACES DETECTED</div>
+                <div className='stat-label'>FACES</div>
               </div>
               <div className='stat-box'>
                 <div className='stat-value'>{results.age}</div>
-                <div className='stat-label'>AGE RANGE</div>
+                <div className='stat-label'>AGE</div>
               </div>
               <div className='stat-box'>
                 <div className='stat-value'>{results.gender}</div>
@@ -116,13 +133,6 @@ const FaceRecognition = () => {
             </div>
           </>
         )}
-
-        <div className='alert-box'>
-          <Eye size={18} />
-          <span>
-            Face detection runs locally using face-api.js. No data is sent to external servers.
-          </span>
-        </div>
       </div>
     </div>
   );
