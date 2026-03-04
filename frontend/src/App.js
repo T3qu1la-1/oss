@@ -21,6 +21,7 @@ import DataVisualizer from './pages/DataVisualizer';
 import WebsiteCloner from './pages/WebsiteCloner';
 import ReverseImageSearch from './pages/ReverseImageSearch';
 import FaceRecognition from './pages/FaceRecognition';
+import ExploitTester from './pages/ExploitTester';
 import Sidebar from './components/Sidebar';
 import './styles/global.css';
 import './App.css';
@@ -73,6 +74,8 @@ const AppContent = () => {
         return <WebsiteCloner />;
       case 'reverse-image':
         return <ReverseImageSearch />;
+      case 'exploit-tester':
+        return <ExploitTester />;
       case 'reports':
         return <Reports />;
       case 'osint':

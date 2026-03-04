@@ -21,6 +21,7 @@ const Sidebar = ({ currentPage, onPageChange }) => {
     { id: 'data-viz', name: 'DATA VIZ', icon: TrendingUp, badge: 'NEW' },
     { id: 'website-cloner', name: 'CLONER', icon: Globe, badge: 'NEW' },
     { id: 'reverse-image', name: 'REV IMAGE', icon: Target, badge: 'NEW' },
+    { id: 'exploit-tester', name: 'EXPLOIT TEST', icon: Zap, badge: 'NEW' },
     { id: 'osint', name: 'OSINT DORKS', icon: Search },
     { id: 'framework', name: 'OSINT FRAME', icon: Compass },
     { id: 'boitata', name: 'BOITATÁ', icon: Terminal },
