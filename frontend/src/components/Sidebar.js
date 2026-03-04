@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Menu, Shield, Search, Home, Lock, Image, Compass, BookOpen, 
-  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut
+  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut, Zap
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
