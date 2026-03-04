@@ -23,6 +23,7 @@ const Sidebar = ({ currentPage, onPageChange }) => {
     { id: 'reverse-image', name: 'REV IMAGE', icon: Target, badge: 'NEW' },
     { id: 'osint', name: 'OSINT DORKS', icon: Search },
     { id: 'framework', name: 'OSINT FRAME', icon: Compass },
+    { id: 'boitata', name: 'BOITATÁ', icon: Terminal },
     { id: 'academy', name: 'ACADEMY', icon: BookOpen },
     { id: 'exif', name: 'EXIF HUNTER', icon: Image },
     { id: 'emoji', name: 'EMOJI-CRYPT', icon: Lock },
