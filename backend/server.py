@@ -380,6 +380,10 @@ app.include_router(auth_router)
 from routes.tools_routes import router as tools_router
 app.include_router(tools_router, prefix="/api/tools", tags=["tools"])
 
+# Import and include admin routes
+from routes.admin_routes import router as admin_router
+app.include_router(admin_router)
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

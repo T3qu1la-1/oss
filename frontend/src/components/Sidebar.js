@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Menu, Shield, Search, Home, Lock, Image, Compass, BookOpen, 
-  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut, Zap
+  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut, Zap, Crown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
@@ -12,6 +12,8 @@ const Sidebar = ({ currentPage, onPageChange }) => {
 
   const menuItems = [
     { id: 'home', name: 'HOME', icon: Home },
+    // Admin only
+    ...(user?.role === 'admin' ? [{ id: 'admin', name: 'ADMIN PANEL', icon: Crown, badge: 'ADMIN', color: '#ffd700' }] : []),
     { id: 'pentester', name: 'PENTESTER', icon: Shield, badge: 'ACTIVE' },
     { id: 'username-search', name: 'USERNAME', icon: Users, badge: 'NEW' },
     { id: 'face-recognition', name: 'FACE AI', icon: Eye, badge: 'NEW' },

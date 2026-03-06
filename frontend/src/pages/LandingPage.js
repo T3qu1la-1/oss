@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Terminal, Code, Shield, Eye } from 'lucide-react';
+import { Terminal, Code, Shield, Eye, Send } from 'lucide-react';
 import './LandingPage.css';
 
 const LandingPage = ({ onNavigate }) => {
@@ -163,6 +163,21 @@ const LandingPage = ({ onNavigate }) => {
                 </button>
                 <button className="btn-terminal btn-primary" onClick={() => onNavigate('register')}>
                   [ REGISTRAR ]
+                </button>
+                <button 
+                  className="btn-terminal" 
+                  onClick={() => onNavigate('telegram-login')}
+                  style={{ 
+                    background: 'rgba(0, 191, 255, 0.1)', 
+                    borderColor: '#00bfff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Send size={18} />
+                  [ LOGIN VIA TELEGRAM ]
                 </button>
               </div>
 
