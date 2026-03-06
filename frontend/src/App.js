@@ -6,6 +6,7 @@ import protection from './protection';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import TelegramLoginPage from './pages/TelegramLoginPage';
 import Dashboard from './pages/Dashboard';
 import PentesterPage from './pages/PentesterPage';
 import Reports from './pages/Reports';
@@ -55,6 +56,9 @@ const AppContent = () => {
     }
     if (currentPage === 'register') {
       return <RegisterPage onNavigate={setCurrentPage} />;
+    }
+    if (currentPage === 'telegram-login') {
+      return <TelegramLoginPage onNavigate={setCurrentPage} onLoginSuccess={() => window.location.reload()} />;
     }
     return <LandingPage onNavigate={setCurrentPage} />;
   }
