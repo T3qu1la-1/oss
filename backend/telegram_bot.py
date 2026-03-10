@@ -9,9 +9,9 @@ import asyncio
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
-from motor.motor_asyncio import AsyncIOMotorClient
 import uuid
 from datetime import datetime
+from db_connection import db, telegram_users_collection
 
 # Configurar logging
 logging.basicConfig(
@@ -21,13 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Token do bot
-BOT_TOKEN = "8797087932:AAFv4GxEZOxcbur1jEXkpBogOP-GjG921-g"
-
-# MongoDB connection
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ.get('DB_NAME', 'olhos_de_deus')]
-telegram_users_collection = db['telegram_users']
+BOT_TOKEN = "8797087932:AAHpK-rhf5m3osBSB4PYJiwoaa-aAv_KSs4"
 
 # Estados da conversa
 WAITING_PASSWORD = 1
@@ -56,7 +50,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Novo registro
     await update.message.reply_text(
-        f"🎉 Bem-vindo ao Pentesting Toolkit, {first_name}!\n\n"
+        f"🎉 Bem-vindo ao olho de cristo, {first_name}!\n\n"
         f"🆔 Seu Telegram ID único é: `{telegram_id}`\n\n"
         f"📝 Agora, por favor, **escolha uma senha forte** para sua conta.\n\n"
         f"⚠️ A senha deve ter no mínimo 6 caracteres.\n\n"
@@ -115,7 +109,7 @@ async def receive_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"3. Use suas credenciais:\n"
         f"   • Telegram ID: `{telegram_id}`\n"
         f"   • Sua senha\n\n"
-        f"🔒 Seu IP será registrado automaticamente ao fazer login.\n\n"
+        f"🔒 suas credenciais será registrado automaticamente ao fazer login.\n\n"
         f"✨ Pronto para começar!",
         parse_mode='Markdown'
     )
@@ -141,7 +135,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "1. Use /start para se registrar\n"
         "2. Escolha uma senha\n"
         "3. Use seu Telegram ID + senha para fazer login no site\n"
-        "4. Seu IP será registrado automaticamente\n\n"
+        "4. Sua credencial será registrada automaticamente\n\n"
         "🔐 **Segurança:**\n"
         "• Cada Telegram ID é único\n"
         "• Seu IP é validado a cada login\n"

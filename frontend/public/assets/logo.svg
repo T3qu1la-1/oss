@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" stroke="white" stroke-width="1.5">
+  <!-- Outer hexagon -->
+  <polygon points="100,10 185,55 185,145 100,190 15,145 15,55" />
+  <!-- Internal grid lines - horizontal -->
+  <line x1="32" y1="80" x2="168" y2="80" />
+  <line x1="24" y1="110" x2="176" y2="110" />
+  <line x1="34" y1="140" x2="166" y2="140" />
+  <!-- Internal grid lines - diagonal left to right -->
+  <line x1="70" y1="30" x2="40" y2="165" />
+  <line x1="105" y1="15" x2="75" y2="185" />
+  <!-- Internal grid lines - vertical -->
+  <line x1="130" y1="35" x2="130" y2="175" />
+  <line x1="155" y1="50" x2="155" y2="153" />
+</svg>

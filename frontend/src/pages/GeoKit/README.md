@@ -80,7 +80,7 @@ yarn add axios zustand immer osmtogeojson
 
 ## 🚀 Uso
 
-1. Acesse o site: https://automated-site.preview.emergentagent.com
+1. Acesse o site: http://localhost:3000
 2. Clique no menu **GeoKit** (ícone de globo 🌍)
 3. Escolha a ferramenta desejada nas tabs
 

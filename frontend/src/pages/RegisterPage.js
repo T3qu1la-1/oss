@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, AlertCircle, Check, X } from 'lucide-react';
+import { ArrowRight, AlertCircle, Check, X, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './AuthPages.css';
 
@@ -49,7 +49,18 @@ const RegisterPage = ({ onNavigate }) => {
       <div className="auth-container-minimal">
         <div className="auth-box">
           <div className="auth-header-minimal">
-            <h1 className="auth-title">REGISTRAR</h1>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+              <div style={{
+                width: '48px', height: '48px',
+                borderRadius: '50%',
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Eye size={22} />
+              </div>
+            </div>
+            <h1 className="auth-title">Criar Conta</h1>
             <div className="title-underline"></div>
           </div>
 
@@ -62,7 +73,7 @@ const RegisterPage = ({ onNavigate }) => {
             )}
 
             <div className="input-group">
-              <label>USERNAME</label>
+              <label>Nome de Usuário</label>
               <input 
                 type="text" 
                 placeholder="seu_username"
@@ -74,7 +85,7 @@ const RegisterPage = ({ onNavigate }) => {
             </div>
 
             <div className="input-group">
-              <label>EMAIL</label>
+              <label>Email</label>
               <input 
                 type="email" 
                 placeholder="seu@email.com"
@@ -86,7 +97,7 @@ const RegisterPage = ({ onNavigate }) => {
             </div>
 
             <div className="input-group">
-              <label>SENHA</label>
+              <label>Senha</label>
               <input 
                 type="password"
                 placeholder="••••••••"
@@ -99,15 +110,15 @@ const RegisterPage = ({ onNavigate }) => {
                 <div className="password-checks">
                   <div className={`check-item ${validation.minLength ? 'valid' : 'invalid'}`}>
                     {validation.minLength ? <Check size={14} /> : <X size={14} />}
-                    <span>MÍNIMO 6 CARACTERES</span>
+                    <span>Mínimo 6 caracteres</span>
                   </div>
                   <div className={`check-item ${validation.hasLetter ? 'valid' : 'invalid'}`}>
                     {validation.hasLetter ? <Check size={14} /> : <X size={14} />}
-                    <span>CONTÉM LETRA</span>
+                    <span>Contém letra</span>
                   </div>
                   <div className={`check-item ${validation.hasNumber ? 'valid' : 'invalid'}`}>
                     {validation.hasNumber ? <Check size={14} /> : <X size={14} />}
-                    <span>CONTÉM NÚMERO</span>
+                    <span>Contém número</span>
                   </div>
                 </div>
               )}
@@ -118,9 +129,9 @@ const RegisterPage = ({ onNavigate }) => {
               className="btn-minimal"
               disabled={loading}
             >
-              {loading ? 'CRIANDO...' : (
+              {loading ? 'Criando conta...' : (
                 <>
-                  CRIAR CONTA <ArrowRight size={18} />
+                  Criar Conta <ArrowRight size={18} />
                 </>
               )}
             </button>
@@ -128,13 +139,13 @@ const RegisterPage = ({ onNavigate }) => {
 
           <div className="auth-footer-minimal">
             <p>
-              JÁ TEM CONTA?{' '}
+              Já tem conta?{' '}
               <button onClick={() => onNavigate('login')} className="link-minimal">
-                LOGIN
+                Entrar
               </button>
             </p>
             <button onClick={() => onNavigate('landing')} className="link-minimal">
-              VOLTAR
+              ← Voltar
             </button>
           </div>
         </div>

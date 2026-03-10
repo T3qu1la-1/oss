@@ -1,194 +1,267 @@
-import React, { useEffect, useRef } from 'react';
-import { Terminal, Code, Shield, Eye, Send } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Eye, Zap, Send, ArrowRight, ChevronDown } from 'lucide-react';
 import './LandingPage.css';
 
 const LandingPage = ({ onNavigate }) => {
-  const canvasRef = useRef(null);
+  const videoRef = useRef(null);
+  // Array de vídeos que irão tocar em sequência (em loop infinito)
+  const videos = [
+    '/assets/hero-bg.mp4',
+    '/assets/hero-bg-2.mp4'
+  ];
+  
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const chars = '01';
-    const fontSize = 14;
-    const columns = canvas.width / fontSize;
-    const drops = Array(Math.floor(columns)).fill(1);
-
-    function draw() {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#0f0';
-      ctx.font = fontSize + 'px monospace';
-
-      for (let i = 0; i < drops.length; i++) {
-        const text = chars[Math.floor(Math.random() * chars.length)];
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
+    const video = videoRef.current;
+    if (video) {
+      video.addEventListener('canplay', () => setVideoLoaded(true));
+      
+      const handleTimeUpdate = () => {
+        // Transição rápida nos últimos frames
+        if (video.duration && video.duration - video.currentTime < 0.15) {
+          video.style.opacity = '0.7';
+        } else if (videoLoaded) {
+          video.style.opacity = '1';
         }
-        drops[i]++;
+      };
+      
+      video.addEventListener('timeupdate', handleTimeUpdate);
+      return () => video.removeEventListener('timeupdate', handleTimeUpdate);
+    }
+  }, [videoLoaded, currentVideoIndex]);
+
+  const handleVideoEnd = () => {
+    // Quando um vídeo acaba, passa para o próximo da lista
+    const nextIndex = (currentVideoIndex + 1) % videos.length;
+    setCurrentVideoIndex(nextIndex);
+  };
+
+  const features = [
+    { title: 'Pentesting', desc: 'Scanner de vulnerabilidades avançado com relatórios detalhados' },
+    { title: 'OSINT', desc: 'Inteligência de fontes abertas com mais de 200 ferramentas' },
+    { title: 'Recon', desc: 'Busca em 300+ plataformas, reconhecimento facial com IA' },
+    { title: 'Criptografia', desc: 'Esteganografia, geradores de payload e análise de metadados' },
+  ];
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.1
       }
     }
+  };
 
-    const interval = setInterval(draw, 33);
+  const fadeUp = {
+    hidden: { opacity: 0, y: 40, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { type: "spring", stiffness: 100, damping: 20 }
+    }
+  };
 
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
+  const slideIn = {
+    hidden: { opacity: 0, x: -30 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 0.6, ease: "easeOut" }
+    }
+  };
 
   return (
-    <div className="landing-minimal">
-      <canvas ref={canvasRef} className="matrix-bg" />
-      
-      <div className="landing-content">
-        <div className="terminal-window">
-          <div className="terminal-header">
-            <span className="dot red"></span>
-            <span className="dot yellow"></span>
-            <span className="dot green"></span>
-            <span className="terminal-title">OLHOS_DE_DEUS.exe</span>
-          </div>
-          
-          <div className="terminal-body">
-            <div className="terminal-line">
-              <span className="prompt">root@system:~$</span>
-              <span className="command"> ./initialize_system</span>
-            </div>
-            
-            <div className="system-output">
-              <p className="typing-effect">[OK] Loading security modules...</p>
-              <p className="typing-effect delay-1">[OK] Initializing OSINT framework...</p>
-              <p className="typing-effect delay-2">[OK] System ready.</p>
-            </div>
-
-            <div className="main-content">
-              <div className="logo-section">
-                <Eye className="logo-icon" size={80} />
-                <h1 className="system-title glitch" data-text="OLHOS DE DEUS">
-                  OLHOS DE DEUS
-                </h1>
-              </div>
-
-              <div className="description">
-                <p className="mono-text">
-                  &gt; PLATAFORMA PROFISSIONAL DE PENTESTING E OSINT
-                </p>
-                <p className="mono-text">
-                  &gt; 14+ FERRAMENTAS ESPECIALIZADAS
-                </p>
-                <p className="mono-text">
-                  &gt; SCANNER DE VULNERABILIDADES AVANÇADO
-                </p>
-                <p className="mono-text">
-                  &gt; PROTEÇÃO CONTRA DDOS E PAYLOADS MALICIOSOS
-                </p>
-              </div>
-
-              <div className="features-grid">
-                <div className="feature-item">
-                  <Shield size={24} />
-                  <span>PENTESTING</span>
-                </div>
-                <div className="feature-item">
-                  <Terminal size={24} />
-                  <span>OSINT</span>
-                </div>
-                <div className="feature-item">
-                  <Code size={24} />
-                  <span>EXPLOITS</span>
-                </div>
-                <div className="feature-item">
-                  <Eye size={24} />
-                  <span>RECON</span>
-                </div>
-              </div>
-
-              <div className="developer-section">
-                <div className="scan-line"></div>
-                <h2 className="developer-title">&gt; DESENVOLVEDOR</h2>
-                <div className="developer-info">
-                  <p className="mono-text">NOME: TEQU1LA</p>
-                </div>
-                <div className="scan-line" style={{margin: '1rem 0'}}></div>
-                <h3 className="developer-title" style={{fontSize: '0.9rem', marginBottom: '0.5rem'}}>&gt; ESTATÍSTICAS DO PROJETO</h3>
-                <div className="developer-info" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem'}}>
-                  <div style={{padding: '0.75rem', background: 'rgba(0, 255, 65, 0.05)', border: '1px solid var(--primary)', borderRadius: '4px'}}>
-                    <p className="mono-text" style={{fontSize: '0.85rem', marginBottom: '0.25rem'}}>PYTHON</p>
-                    <p className="mono-text" style={{fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 'bold'}}>5,049</p>
-                    <p className="mono-text" style={{fontSize: '0.75rem', color: '#666'}}>linhas</p>
-                  </div>
-                  <div style={{padding: '0.75rem', background: 'rgba(0, 255, 65, 0.05)', border: '1px solid var(--primary)', borderRadius: '4px'}}>
-                    <p className="mono-text" style={{fontSize: '0.85rem', marginBottom: '0.25rem'}}>JAVASCRIPT/JSX</p>
-                    <p className="mono-text" style={{fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 'bold'}}>10,640</p>
-                    <p className="mono-text" style={{fontSize: '0.75rem', color: '#666'}}>linhas</p>
-                  </div>
-                  <div style={{padding: '0.75rem', background: 'rgba(0, 255, 65, 0.05)', border: '1px solid var(--primary)', borderRadius: '4px'}}>
-                    <p className="mono-text" style={{fontSize: '0.85rem', marginBottom: '0.25rem'}}>CSS</p>
-                    <p className="mono-text" style={{fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 'bold'}}>5,400</p>
-                    <p className="mono-text" style={{fontSize: '0.75rem', color: '#666'}}>linhas</p>
-                  </div>
-                  <div style={{padding: '0.75rem', background: 'rgba(0, 255, 65, 0.1)', border: '2px solid var(--primary)', borderRadius: '4px'}}>
-                    <p className="mono-text" style={{fontSize: '0.85rem', marginBottom: '0.25rem'}}>TOTAL</p>
-                    <p className="mono-text" style={{fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 'bold'}}>21,089</p>
-                    <p className="mono-text" style={{fontSize: '0.75rem', color: '#666'}}>linhas de código</p>
-                  </div>
-                </div>
-                <div className="developer-info" style={{marginTop: '1rem'}}>
-                  <p className="mono-text" style={{fontSize: '0.8rem', color: '#888'}}>
-                    ARQUIVOS: 13 Python | 82 JavaScript/JSX | 17 CSS
-                  </p>
-                  <p className="mono-text" style={{fontSize: '0.8rem', color: '#888', marginTop: '0.5rem'}}>
-                    SEGURANÇA: Rate Limiting | Input Validation | TLS Protection
-                  </p>
-                </div>
-              </div>
-
-              <div className="actions">
-                <button className="btn-terminal" onClick={() => onNavigate('login')}>
-                  [ LOGIN ]
-                </button>
-                <button className="btn-terminal btn-primary" onClick={() => onNavigate('register')}>
-                  [ REGISTRAR ]
-                </button>
-                <button 
-                  className="btn-terminal" 
-                  onClick={() => onNavigate('telegram-login')}
-                  style={{ 
-                    background: 'rgba(0, 191, 255, 0.1)', 
-                    borderColor: '#00bfff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  <Send size={18} />
-                  [ LOGIN VIA TELEGRAM ]
-                </button>
-              </div>
-
-              <div className="footer-text">
-                <p className="mono-text small">USO ÉTICO APENAS - TESTES AUTORIZADOS</p>
-                <p className="mono-text small">&copy; 2026 OLHOS DE DEUS - ALL RIGHTS RESERVED</p>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="landing">
+      {/* Background Video/Image */}
+      <div className="landing-bg">
+        <img
+          src="/assets/hero-bg.png"
+          alt=""
+          className={`landing-bg-img ${videoLoaded ? 'hidden' : ''}`}
+        />
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          onEnded={handleVideoEnd}
+          src={videos[currentVideoIndex]}
+          className={`landing-bg-video ${videoLoaded ? 'visible' : ''}`}
+        >
+        </video>
+        <div className="landing-bg-overlay" />
       </div>
+
+      {/* Navigation */}
+      <motion.nav
+        className="landing-nav"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="nav-logo">
+          <img src="/assets/logo.svg" alt="Olhos de Deus" className="nav-logo-img" />
+          <span>OLHOS DE DEUS</span>
+        </div>
+        <div className="nav-actions">
+          <button className="nav-btn-ghost" onClick={() => onNavigate('login')}>
+            Entrar
+          </button>
+          <button className="nav-btn-primary" onClick={() => onNavigate('register')}>
+            Começar Agora
+          </button>
+        </div>
+      </motion.nav>
+
+      {/* Hero Section */}
+      <section className="hero">
+        <motion.div
+          className="hero-content"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+
+          <h1 className="hero-title">
+            Inteligência que<br />
+            <span className="hero-title-accent">tudo enxerga.</span>
+          </h1>
+
+          <div className="text-glass-box">
+            <p className="hero-subtitle">
+              Plataforma profissional de OSINT e Pentesting com mais de 14 ferramentas 
+              especializadas para investigação digital e análise de segurança.
+            </p>
+          </div>
+
+          <div className="hero-ctas">
+            <button className="btn-primary-lg" onClick={() => onNavigate('register')}>
+              Criar Conta Gratuita
+              <ArrowRight size={18} />
+            </button>
+            <button className="btn-ghost-lg" onClick={() => onNavigate('telegram-login')}>
+              <Send size={18} />
+              Entrar via Telegram
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="scroll-indicator"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+        >
+          <ChevronDown size={20} />
+        </motion.div>
+      </section>
+
+
+      {/* Features Section */}
+      <section className="features-section">
+        <motion.div
+          className="section-header"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="section-title">Ferramentas Poderosas</h2>
+          <div className="text-glass-box">
+            <p className="section-desc">
+              Tudo que você precisa para investigação digital em um só lugar.
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div 
+          className="features-grid"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          {features.map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                className="feature-card glass"
+                variants={fadeUp}
+                whileHover={{ y: -8, scale: 1.02, transition: { type: "spring", stiffness: 300 } }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <motion.div 
+                  className="feature-icon"
+                  initial={{ rotate: -10 }}
+                  whileHover={{ rotate: 0, scale: 1.1 }}
+                >
+                  <Zap size={24} />
+                </motion.div>
+                <h3 className="feature-title">{feature.title}</h3>
+                <p className="feature-desc">{feature.desc}</p>
+              </motion.div>
+            ))}
+        </motion.div>
+      </section>
+
+      {/* Developer Section */}
+      <section className="dev-section">
+        <motion.div
+          className="dev-card glass-strong"
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+
+          <div className="dev-tags">
+            <span className="tag">Rate Limiting</span>
+            <span className="tag">Input Validation</span>
+            <span className="tag">TLS Protection</span>
+            <span className="tag">Anti-DDoS</span>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="cta-section">
+        <motion.div
+          className="cta-content"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="cta-title">Pronto para começar?</h2>
+          <div className="text-glass-box">
+            <p className="cta-desc">
+              Crie sua conta e acesse todas as ferramentas de inteligência digital.
+            </p>
+          </div>
+          <div className="cta-buttons">
+            <button className="btn-primary-lg" onClick={() => onNavigate('register')}>
+              Criar Conta
+              <ArrowRight size={18} />
+            </button>
+            <button className="btn-ghost-lg" onClick={() => onNavigate('login')}>
+              Já tenho conta
+            </button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Footer */}
+      <footer className="landing-footer">
+        <div className="footer-content">
+          <p className="footer-legal">Uso ético apenas — Testes autorizados</p>
+          <p className="footer-copy">© 2026 Olhos de Deus. Todos os direitos reservados.</p>
+        </div>
+      </footer>
     </div>
   );
 };

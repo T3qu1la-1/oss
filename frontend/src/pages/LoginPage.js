@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './AuthPages.css';
 
@@ -31,7 +31,18 @@ const LoginPage = ({ onNavigate }) => {
       <div className="auth-container-minimal">
         <div className="auth-box">
           <div className="auth-header-minimal">
-            <h1 className="auth-title">LOGIN</h1>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+              <div style={{
+                width: '48px', height: '48px',
+                borderRadius: '50%',
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Eye size={22} />
+              </div>
+            </div>
+            <h1 className="auth-title">Entrar</h1>
             <div className="title-underline"></div>
           </div>
 
@@ -44,7 +55,7 @@ const LoginPage = ({ onNavigate }) => {
             )}
 
             <div className="input-group">
-              <label>EMAIL</label>
+              <label>Email</label>
               <input 
                 type="email" 
                 placeholder="seu@email.com"
@@ -56,7 +67,7 @@ const LoginPage = ({ onNavigate }) => {
             </div>
 
             <div className="input-group">
-              <label>SENHA</label>
+              <label>Senha</label>
               <input 
                 type="password"
                 placeholder="••••••••"
@@ -72,9 +83,9 @@ const LoginPage = ({ onNavigate }) => {
               className="btn-minimal"
               disabled={loading}
             >
-              {loading ? 'ENTRANDO...' : (
+              {loading ? 'Entrando...' : (
                 <>
-                  ENTRAR <ArrowRight size={18} />
+                  Entrar <ArrowRight size={18} />
                 </>
               )}
             </button>
@@ -82,13 +93,16 @@ const LoginPage = ({ onNavigate }) => {
 
           <div className="auth-footer-minimal">
             <p>
-              NÃO TEM CONTA?{' '}
+              Não tem conta?{' '}
               <button onClick={() => onNavigate('register')} className="link-minimal">
-                REGISTRAR
+                Criar conta
               </button>
             </p>
+            <button onClick={() => onNavigate('telegram-login')} className="link-minimal">
+              Entrar via Telegram
+            </button>
             <button onClick={() => onNavigate('landing')} className="link-minimal">
-              VOLTAR
+              ← Voltar
             </button>
           </div>
         </div>

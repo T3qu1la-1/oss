@@ -1,95 +1,91 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { 
   Shield, Search, Users, Database, Terminal, Code, TrendingUp, Globe, 
-  Target, Eye, BookOpen, Image, Lock, FileText, Zap, Activity
+  Target, Eye, BookOpen, Image, Lock, FileText, Zap, ArrowRight
 } from 'lucide-react';
 import './Dashboard.css';
 
 const Dashboard = ({ onNavigate }) => {
   const tools = [
-    { id: 'pentester', name: 'PENTESTER PRO', icon: Shield, desc: 'Vulnerability Scanner', status: 'ACTIVE' },
-    { id: 'username-search', name: 'USERNAME SEARCH', icon: Users, desc: '300+ Platforms', status: 'NEW' },
-    { id: 'face-recognition', name: 'FACE RECOGNITION', icon: Eye, desc: 'AI Analysis', status: 'NEW' },
-    { id: 'generators', name: 'GERADORES UTILS', icon: Database, desc: 'BR Data Generator', status: 'NEW' },
-    { id: 'payload-gen', name: 'PAYLOAD GENERATOR', icon: Terminal, desc: 'Exploit Library', status: 'NEW' },
-    { id: 'api-tester', name: 'API SECURITY', icon: Code, desc: 'REST/GraphQL Testing', status: 'NEW' },
-    { id: 'data-viz', name: 'DATA VISUALIZER', icon: TrendingUp, desc: 'Network Mapping', status: 'NEW' },
-    { id: 'website-cloner', name: 'WEBSITE CLONER', icon: Globe, desc: 'Clone & Phishing', status: 'NEW' },
-    { id: 'reverse-image', name: 'REVERSE IMAGE', icon: Target, desc: 'Multi-Engine Search', status: 'NEW' },
-    { id: 'osint', name: 'OSINT DORKS', icon: Search, desc: 'Google Dorking', status: 'ACTIVE' },
-    { id: 'framework', name: 'OSINT FRAMEWORK', icon: Globe, desc: '200+ Tools', status: 'ACTIVE' },
-    { id: 'academy', name: 'ACADEMY', icon: BookOpen, desc: 'Learning Center', status: 'ACTIVE' },
-    { id: 'exif', name: 'EXIF HUNTER', icon: Image, desc: 'Metadata Extraction', status: 'ACTIVE' },
-    { id: 'emoji', name: 'EMOJI-CRYPT', icon: Lock, desc: 'Steganography', status: 'ACTIVE' },
-    { id: 'geokit', name: 'GEOKIT', icon: Globe, desc: 'Geolocation Tools', status: 'ACTIVE' },
-    { id: 'reports', name: 'REPORTS', icon: FileText, desc: 'Generate Reports', status: 'ACTIVE' }
+    { id: 'pentester', name: 'Pentester Pro', icon: Shield, desc: 'Scanner de vulnerabilidades avançado', tag: 'Segurança' },
+    { id: 'username-search', name: 'Busca de Usuários', icon: Users, desc: 'Busca em 300+ plataformas', tag: 'Novo' },
+    { id: 'face-recognition', name: 'Reconhecimento Facial', icon: Eye, desc: 'Análise facial com IA', tag: 'Novo' },
+    { id: 'generators', name: 'Geradores', icon: Database, desc: 'Gerador de dados BR', tag: 'Novo' },
+    { id: 'payload-gen', name: 'Payload Generator', icon: Terminal, desc: 'Biblioteca de exploits', tag: 'Novo' },
+    { id: 'api-tester', name: 'API Security', icon: Code, desc: 'Teste de REST/GraphQL', tag: 'Novo' },
+    { id: 'data-viz', name: 'Data Visualizer', icon: TrendingUp, desc: 'Mapeamento de redes', tag: 'Novo' },
+    { id: 'website-cloner', name: 'Website Cloner', icon: Globe, desc: 'Clone e análise de sites', tag: 'Novo' },
+    { id: 'reverse-image', name: 'Busca Reversa', icon: Target, desc: 'Busca multi-engine por imagem', tag: 'Novo' },
+    { id: 'exploit-tester', name: 'Exploit Tester', icon: Zap, desc: 'Teste automatizado de exploits', tag: 'Novo' },
+    { id: 'osint', name: 'OSINT Dorks', icon: Search, desc: 'Google Dorking avançado', tag: 'OSINT' },
+    { id: 'framework', name: 'OSINT Framework', icon: Globe, desc: '200+ ferramentas OSINT', tag: 'OSINT' },
+    { id: 'academy', name: 'Academy', icon: BookOpen, desc: 'Centro de aprendizado', tag: 'Educação' },
+    { id: 'exif', name: 'EXIF Hunter', icon: Image, desc: 'Extração de metadados', tag: 'Análise' },
+    { id: 'emoji', name: 'Emoji-Crypt', icon: Lock, desc: 'Esteganografia digital', tag: 'Cripto' },
+    { id: 'geokit', name: 'GeoKit', icon: Globe, desc: 'Ferramentas de geolocalização', tag: 'OSINT' },
+    { id: 'reports', name: 'Relatórios', icon: FileText, desc: 'Gerar relatórios de scans', tag: 'Geral' },
   ];
 
-  const stats = [
-    { label: 'SCANS', value: '1,234', icon: Zap },
-    { label: 'VULNS', value: '89', icon: Shield },
-    { label: 'APIS', value: '456', icon: Code },
-    { label: 'USERS', value: '2.5K', icon: Users }
-  ];
+  const fadeUp = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: i * 0.03, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }
+    })
+  };
 
   return (
-    <div className="dashboard-minimal">
+    <div className="dash">
       {/* Header */}
-      <div className="dash-header">
-        <div className="terminal-prompt">
-          <span className="prompt-user">root@olhos-de-deus</span>
-          <span className="prompt-separator">:</span>
-          <span className="prompt-path">~/dashboard</span>
-          <span className="prompt-symbol">$</span>
+      <div className="dash-top">
+        <div>
+          <h1 className="dash-title">Ferramentas</h1>
+          <p className="dash-subtitle">Selecione uma ferramenta para começar</p>
         </div>
-        <div className="system-status">
-          <span className="status-dot"></span>
-          <span>ALL SYSTEMS OPERATIONAL</span>
+        <div className="dash-status">
+          <span className="dash-status-dot" />
+          <span>Todos os sistemas operacionais</span>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="dash-content">
-        <div className="section-title">
-          <Activity size={20} />
-          <span>AVAILABLE TOOLS</span>
-          <div className="title-line"></div>
-        </div>
-
-        <div className="tools-grid-minimal">
-          {tools.map((tool) => {
-            const Icon = tool.icon;
-            return (
-              <div 
-                key={tool.id} 
-                className="tool-card-minimal"
-                onClick={() => onNavigate(tool.id)}
-              >
-                {tool.status === 'NEW' && <div className="tool-badge-new">NEW</div>}
-                <div className="tool-header">
-                  <Icon size={32} />
-                  <span className="tool-status">[{tool.status}]</span>
+      {/* Tools Grid */}
+      <div className="dash-grid">
+        {tools.map((tool, i) => {
+          const Icon = tool.icon;
+          return (
+            <motion.div
+              key={tool.id}
+              className="dash-card"
+              custom={i}
+              initial="hidden"
+              animate="visible"
+              variants={fadeUp}
+              onClick={() => onNavigate(tool.id)}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            >
+              <div className="dash-card-top">
+                <div className="dash-card-icon">
+                  <Icon size={20} />
                 </div>
-                <div className="tool-name">{tool.name}</div>
-                <div className="tool-desc">&gt; {tool.desc}</div>
-                <div className="tool-action">
-                  <span>EXECUTE</span>
-                  <span className="arrow">&gt;&gt;</span>
-                </div>
+                <span className="dash-card-tag">{tool.tag}</span>
               </div>
-            );
-          })}
-        </div>
+              <h3 className="dash-card-name">{tool.name}</h3>
+              <p className="dash-card-desc">{tool.desc}</p>
+              <div className="dash-card-action">
+                <span>Abrir</span>
+                <ArrowRight size={14} />
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* Footer Warning */}
-      <div className="dash-warning">
-        <div className="warning-border"></div>
-        <div className="warning-content">
-          <Zap size={18} />
-          <span>WARNING: FOR AUTHORIZED TESTING ONLY - UNAUTHORIZED ACCESS IS ILLEGAL</span>
-        </div>
-        <div className="warning-border"></div>
+      {/* Footer */}
+      <div className="dash-footer">
+        <Zap size={14} />
+        <span>Apenas para testes autorizados — Acesso não autorizado é ilegal</span>
       </div>
     </div>
   );

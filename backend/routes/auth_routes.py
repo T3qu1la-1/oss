@@ -1,18 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
-from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
 import uuid
 from auth import hash_password, verify_password, create_access_token, get_current_user, check_admin_credentials, ADMIN_CREDENTIALS
 from models.user import UserCreate, UserLogin, UserResponse, TokenResponse
 from security_middleware import validate_email_input, validate_text_input
 import os
+from db_connection import db, users_collection, telegram_users_collection, scans_collection
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-
-# MongoDB connection
-client = AsyncIOMotorClient(os.getenv('MONGO_URL', 'mongodb://localhost:27017'))
-db = client[os.getenv('DB_NAME', 'olhos_de_deus')]
-users_collection = db['users']
 
 @router.post("/register", response_model=TokenResponse)
 async def register(user: UserCreate):
@@ -162,6 +157,9 @@ async def telegram_login(data: dict, request: Request):
     """Login via Telegram ID + senha + IP (capturado automaticamente)"""
     telegram_id = data.get("telegram_id")
     password = data.get("password")
+
+    if not isinstance(telegram_id, str) or not isinstance(password, str):
+        raise HTTPException(status_code=400, detail="Entradas inválidas. O Telegram ID e senha devem ser texto.")
     
     # Capturar IP do request
     ip_address = request.client.host
@@ -232,6 +230,10 @@ async def telegram_login(data: dict, request: Request):
 @router.get("/telegram/check/{telegram_id}")
 async def check_telegram_user(telegram_id: str):
     """Verificar se Telegram ID já está registrado"""
+    
+    # Prevenir NoSQLi via query params convertidos para dict pelo framework
+    telegram_id = str(telegram_id)
+    
     user = await telegram_users_collection.find_one({"telegram_id": telegram_id})
     
     if user:

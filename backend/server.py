@@ -1,7 +1,6 @@
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -23,10 +22,8 @@ from security_middleware import SecurityMiddleware, validate_text_input, validat
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# Shared DB connection
+from db_connection import client, db
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -383,6 +380,21 @@ app.include_router(tools_router, prefix="/api/tools", tags=["tools"])
 # Import and include admin routes
 from routes.admin_routes import router as admin_router
 app.include_router(admin_router)
+
+@app.on_event("startup")
+async def start_telegram_bot():
+    """Lança o Telegram bot como thread dentro do processo do backend"""
+    import threading
+    def run_bot():
+        try:
+            from telegram_bot import main as bot_main
+            bot_main()
+        except Exception as e:
+            logger.error(f"Telegram bot error: {e}")
+    
+    bot_thread = threading.Thread(target=run_bot, daemon=True, name="TelegramBot")
+    bot_thread.start()
+    logger.info("🤖 Telegram bot started as background thread")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

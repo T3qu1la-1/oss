@@ -324,7 +324,6 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         allowed_hosts = [
             'localhost',
             '127.0.0.1',
-            'automated-site.preview.emergentagent.com',
             # Adicionar outros hosts permitidos aqui
         ]
         
