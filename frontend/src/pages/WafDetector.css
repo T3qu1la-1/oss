@@ -1,0 +1,222 @@
+/* WafDetector.css */
+.waf-detector-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.waf-status-card {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 2.5rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.waf-detected {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(153, 27, 27, 0.2));
+  border-left: 4px solid var(--danger-color);
+}
+
+.waf-detected .status-icon {
+  color: var(--danger-color);
+  animation: pulse 2s infinite;
+}
+
+.waf-detected .meter-fill {
+  background: var(--danger-color);
+  box-shadow: 0 0 10px var(--danger-color);
+}
+
+.waf-clear {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(4, 120, 87, 0.2));
+  border-left: 4px solid var(--success-color);
+}
+
+.waf-clear .status-icon {
+  color: var(--success-color);
+}
+
+.waf-clear .meter-fill {
+  background: var(--success-color);
+  box-shadow: 0 0 10px var(--success-color);
+}
+
+.status-info {
+  flex: 1;
+}
+
+.status-info h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: 1px;
+}
+
+.waf-name {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(90deg, #fff, #aaa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.confidence-meter {
+  width: 100%;
+  max-width: 400px;
+}
+
+.meter-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.meter-bar {
+  height: 8px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease-out;
+}
+
+.waf-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.detail-card {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h3 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-body code {
+  display: block;
+  background: #000;
+  padding: 1rem;
+  border-radius: 4px;
+  color: var(--primary-color);
+  font-family: 'Fira Code', monospace;
+  word-break: break-all;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.status-row:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.status-200 { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.status-403, .status-406, .status-0 { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.status-DROP { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.status-500, .status-503 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+.waf-logs {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.waf-logs h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.log-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.log-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  border-left: 2px solid var(--primary-color);
+  color: #ccc;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9rem;
+}
+
+.log-list li svg {
+  color: var(--warning-color);
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 768px) {
+  .waf-status-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.5rem;
+  }
+  
+  .meter-label {
+    justify-content: center;
+    gap: 1rem;
+  }
+}

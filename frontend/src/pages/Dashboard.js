@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { 
   Shield, Search, Users, Database, Terminal, Code, TrendingUp, Globe, 
-  Target, Eye, BookOpen, Image, Lock, FileText, Zap, ArrowRight
+  Target, Eye, BookOpen, Image, Lock, FileText, Zap, ArrowRight, RadioReceiver, ShieldAlert, FolderSearch, Network, Share2
 } from 'lucide-react';
 import './Dashboard.css';
 
@@ -25,7 +25,11 @@ const Dashboard = ({ onNavigate }) => {
     { id: 'emoji', name: 'Emoji-Crypt', icon: Lock, desc: 'Esteganografia digital', tag: 'Cripto' },
     { id: 'cookie-catcher', name: 'Cookie Catcher', icon: Shield, desc: 'Extração de cookies e headers', tag: 'Web' },
     { id: 'web-scraper', name: 'Web Scraper', icon: Database, desc: 'Extração profunda de código-fonte, mídias e assets', tag: 'Recon' },
+    { id: 'waf-detector', name: 'WAF Detector', icon: ShieldAlert, desc: 'Detecção de firewall e proteção de aplicação', tag: 'Recon' },
     { id: 'request-catcher', name: 'Request Catcher', icon: RadioReceiver, desc: 'Buraco Negro para interceptar requests', tag: 'Recon' },
+    { id: 'dir-buster', name: 'DirBuster', icon: FolderSearch, desc: 'Fuzzer de diretórios e arquivos sensíveis', tag: 'Recon' },
+    { id: 'port-scanner', name: 'Port Scanner', icon: Network, desc: 'Scanner de portas com banner grabbing', tag: 'Recon' },
+    { id: 'subdomain-mapper', name: 'Subdomain Mapper', icon: Share2, desc: 'Dumping de Data Lake de Transparência de Certificados', tag: 'Recon' },
     { id: 'geokit', name: 'GeoKit', icon: Globe, desc: 'Ferramentas de geolocalização', tag: 'OSINT' },
     { id: 'reports', name: 'Relatórios', icon: FileText, desc: 'Gerar relatórios de scans', tag: 'Geral' },
   ];

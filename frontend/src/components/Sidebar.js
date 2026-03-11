@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Menu, Shield, Search, Home, Lock, Image, Compass, BookOpen, 
-  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut, Zap, Crown
+  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut, Zap, Crown, RadioReceiver, ShieldAlert, FolderSearch, Network, Share2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
@@ -13,6 +13,7 @@ const Sidebar = ({ currentPage, onPageChange }) => {
   const menuItems = [
     { id: 'home', name: 'Início', icon: Home },
     ...(user?.role === 'admin' ? [{ id: 'admin', name: 'Admin', icon: Crown, badge: 'ADMIN' }] : []),
+    { id: 'manual', name: 'Manual', icon: BookOpen, badge: 'NOVO' },
     { id: 'pentester', name: 'Pentester', icon: Shield },
     { id: 'username-search', name: 'Usuários', icon: Users, badge: 'NOVO' },
     { id: 'face-recognition', name: 'Face IA', icon: Eye, badge: 'NOVO' },
@@ -31,7 +32,11 @@ const Sidebar = ({ currentPage, onPageChange }) => {
     { id: 'emoji', name: 'Emoji-Crypt', icon: Lock },
     { id: 'cookie-catcher', name: 'Cookie Catcher', icon: Shield, badge: 'NOVO' },
     { id: 'web-scraper', name: 'Web Scraper', icon: Database, badge: 'NOVO' },
+    { id: 'waf-detector', name: 'WAF Detector', icon: ShieldAlert, badge: 'NOVO' },
     { id: 'request-catcher', name: 'Request Catcher', icon: RadioReceiver, badge: 'NOVO' },
+    { id: 'dir-buster', name: 'DirBuster', icon: FolderSearch, badge: 'NOVO' },
+    { id: 'port-scanner', name: 'Port Scanner', icon: Network, badge: 'NOVO' },
+    { id: 'subdomain-mapper', name: 'Subdomain Mapper', icon: Share2, badge: 'NOVO' },
     { id: 'geokit', name: 'GeoKit', icon: Globe },
     { id: 'reports', name: 'Relatórios', icon: FileText }
   ];

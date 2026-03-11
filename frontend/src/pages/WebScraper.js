@@ -85,6 +85,19 @@ const WebScraper = () => {
                  <span className="value">HTTP {result.status_code} | {result.server}</span>
                </div>
             </div>
+            
+            {result.metadata && Object.keys(result.metadata).length > 0 && (
+              <div className="summary-card">
+                 <Search size={24} className="icon-green" />
+                 <div className="info">
+                   <span className="label">Page Title</span>
+                   <span className="value" style={{maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={result.metadata.title || ''}>
+                      {result.metadata.title || 'N/A'}
+                   </span>
+                 </div>
+              </div>
+            )}
+            
             <div className="summary-card">
                <FileText size={24} className="icon-green" />
                <div className="info">
@@ -112,6 +125,9 @@ const WebScraper = () => {
             <button className={`tab-btn ${activeTab === 'html' ? 'active' : ''}`} onClick={() => setActiveTab('html')}>
                <Code size={16}/> RAW HTML
             </button>
+            <button className={`tab-btn ${activeTab === 'metadata' ? 'active' : ''}`} onClick={() => setActiveTab('metadata')}>
+               <Search size={16}/> METADATA
+            </button>
             <button className={`tab-btn ${activeTab === 'assets' ? 'active' : ''}`} onClick={() => setActiveTab('assets')}>
                <FileText size={16}/> CSS & JS
             </button>
@@ -134,6 +150,32 @@ const WebScraper = () => {
                   <h3>Código-Fonte HTML</h3>
                 </div>
                 <textarea readOnly value={result.html.content} className="html-display" />
+              </div>
+            )}
+            
+            {activeTab === 'metadata' && (
+              <div className="content-panel metadata-panel">
+                 <h3><Search size={18}/> Meta Tags Extraídas ({result.metadata ? Object.keys(result.metadata).length : 0})</h3>
+                 {!result.metadata || Object.keys(result.metadata).length === 0 ? <p className="no-data">Nenhuma meta tag encontrada.</p> : (
+                   <div className="table-responsive">
+                     <table className="data-table">
+                       <thead>
+                         <tr>
+                           <th>Tag / Propriedade</th>
+                           <th>Conteúdo</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {Object.entries(result.metadata).map(([key, value], i) => (
+                           <tr key={i}>
+                             <td style={{fontWeight: 'bold', color: '#10b981'}}>{key}</td>
+                             <td style={{wordBreak: 'break-all'}}>{value}</td>
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   </div>
+                 )}
               </div>
             )}
 
@@ -177,10 +219,15 @@ const WebScraper = () => {
                  </div>
 
                  <div className="media-section" style={{marginTop:'2rem'}}>
-                    <h3><Video size={18}/> Vídeos Encontrados ({result.assets.videos.length})</h3>
+                    <h3><Video size={18}/> Vídeos/Iframes Encontrados ({result.assets.videos.length})</h3>
                     <ul className="asset-list">
                       {result.assets.videos.map((vid, i) => (
-                        <li key={i}><a href={vid} target="_blank" rel="noopener noreferrer">{vid}</a></li>
+                        <li key={i}>
+                           {vid.includes('youtube.com') || vid.includes('vimeo.com') ? (
+                               <span className="badge true" style={{marginRight: '10px'}}>Embed</span>
+                           ) : <span className="badge false" style={{marginRight: '10px'}}>Video</span>}
+                           <a href={vid} target="_blank" rel="noopener noreferrer">{vid}</a>
+                        </li>
                       ))}
                     </ul>
                     {result.assets.videos.length === 0 && <p className="no-data">Nenhum vídeo encontrado.</p>}

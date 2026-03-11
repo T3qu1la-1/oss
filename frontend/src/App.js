@@ -29,7 +29,12 @@ import ExploitTester from './pages/ExploitTester';
 import CookieCatcher from './pages/CookieCatcher';
 import WebScraper from './pages/WebScraper';
 import RequestCatcher from './pages/RequestCatcher';
+import WafDetector from './pages/WafDetector';
+import DirBuster from './pages/DirBuster';
+import PortScanner from './pages/PortScanner';
+import SubdomainMapper from './pages/SubdomainMapper';
 import AdminPanel from './pages/AdminPanel';
+import Manual from './pages/Manual';
 import Sidebar from './components/Sidebar';
 import './styles/global.css';
 import './App.css';
@@ -100,6 +105,14 @@ const AppContent = () => {
         return <WebScraper />;
       case 'request-catcher':
         return <RequestCatcher />;
+      case 'waf-detector':
+        return <WafDetector />;
+      case 'dir-buster':
+        return <DirBuster />;
+      case 'port-scanner':
+        return <PortScanner />;
+      case 'subdomain-mapper':
+        return <SubdomainMapper />;
       case 'reports':
         return <Reports />;
       case 'osint':

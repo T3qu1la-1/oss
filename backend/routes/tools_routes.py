@@ -108,36 +108,150 @@ async def extract_exif_endpoint(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+import base64
+import zipfile
+import asyncio
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
+
 @router.post("/clone-website")
 async def clone_website(data: dict):
-    """Clone website HTML with security validation"""
+    """Clone website HTML e opcionalmente cria um ZIP completo com assets e sub-páginas"""
     try:
         url = data.get("url")
+        clone_subpages = data.get("clone_subpages", False)
+        
         if not url:
             raise HTTPException(status_code=400, detail="URL is required")
-        
-        # 🛡️ Validar URL contra payloads maliciosos
+            
         validated_url = validate_url_input(url)
+        parsed_base = urlparse(validated_url)
+        base_domain = parsed_base.netloc
         
-        # Fetch the website
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
         }
         
-        # 🛡️ Timeout de 10 segundos para evitar requisições longas
-        response = requests.get(validated_url, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        # 🛡️ Limitar tamanho da resposta (5MB)
-        max_response_size = 5 * 1024 * 1024
-        if len(response.content) > max_response_size:
-            raise HTTPException(status_code=400, detail="Website content too large (max 5MB)")
-        
-        return {
-            "html": response.text,
-            "status": response.status_code,
-            "size": len(response.text)
-        }
+        async def fetch_page(session, fetch_url):
+            try:
+                async with session.get(fetch_url, headers=headers, timeout=aiohttp.ClientTimeout(total=15), ssl=False) as resp:
+                    if resp.status == 200 and 'text/html' in resp.headers.get('Content-Type', ''):
+                        text = await resp.text()
+                        return text, resp.url
+            except Exception:
+                pass
+            return None, None
+
+        async def fetch_asset(session, asset_url):
+            try:
+                async with session.get(asset_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10), ssl=False) as resp:
+                    if resp.status == 200:
+                        content = await resp.read()
+                        # Só baixar arquivos razoáveis (max 2MB por asset)
+                        if len(content) <= 2 * 1024 * 1024:
+                            return content
+            except Exception:
+                pass
+            return None
+
+        async with aiohttp.ClientSession() as session:
+            # 1. Fetch Main Page
+            main_html, final_url = await fetch_page(session, validated_url)
+            if not main_html:
+                raise HTTPException(status_code=400, detail="Falha ao carregar a página principal ou não é um HTML válido.")
+                
+            soup = BeautifulSoup(main_html, 'html.parser')
+            
+            # Preparar ZIP em memória
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                # 2. Coletar Assets (CSS, JS, Imagens locais básicas)
+                assets_to_download = {}
+                
+                # CSS
+                for link in soup.find_all('link', rel='stylesheet'):
+                    href = link.get('href')
+                    if href:
+                        abs_url = str(urljoin(str(final_url), href))
+                        filename = f"assets/css_{len(assets_to_download)}.css"
+                        assets_to_download[abs_url] = filename
+                        link['href'] = filename  # Re-escrever o HTML local
+                        
+                # JS
+                for script in soup.find_all('script', src=True):
+                    src = script.get('src')
+                    if src:
+                        abs_url = str(urljoin(str(final_url), src))
+                        filename = f"assets/js_{len(assets_to_download)}.js"
+                        assets_to_download[abs_url] = filename
+                        script['src'] = filename
+                        
+                # Imagens (limitado src diretos inline rápidos)
+                for img in soup.find_all('img', src=True):
+                    src = img.get('src')
+                    if src and not src.startswith('data:'):
+                        abs_url = str(urljoin(str(final_url), src))
+                        ext = abs_url.split('.')[-1][:4] if '.' in abs_url else 'png'
+                        # clean ext
+                        ext = ''.join(c for c in ext if c.isalnum())
+                        filename = f"assets/img_{len(assets_to_download)}.{ext}"
+                        assets_to_download[abs_url] = filename
+                        img['src'] = filename
+
+                # Baixar Assets Paralelamente
+                asset_tasks = [fetch_asset(session, url) for url in assets_to_download.keys()]
+                downloaded_assets = await asyncio.gather(*asset_tasks)
+                
+                for idx, (url, filepath) in enumerate(assets_to_download.items()):
+                    content = downloaded_assets[idx]
+                    if content:
+                        zip_file.writestr(filepath, content)
+                
+                # Tratar links das sub-páginas (Absolutos vs Relativos)
+                subpages = {}
+                if clone_subpages:
+                    for a in soup.find_all('a', href=True):
+                        href = a.get('href')
+                        if href and not href.startswith('#') and not href.startswith('javascript:') and not href.startswith('mailto:'):
+                            abs_url = str(urljoin(str(final_url), href))
+                            p_url = urlparse(abs_url)
+                            # Se for o mesmo domínio e não for a raiz
+                            if p_url.netloc == base_domain and p_url.path and p_url.path != '/':
+                                slug = p_url.path.strip('/').replace('/', '_')
+                                if not slug: slug = "index_page"
+                                filename = f"{slug}.html"
+                                if abs_url not in subpages and len(subpages) < 15: # Máximo 15 sub-páginas
+                                    subpages[abs_url] = filename
+                                    a['href'] = filename
+                
+                # Fazer download de Sub-páginas
+                if clone_subpages and subpages:
+                    sub_tasks = [fetch_page(session, url) for url in subpages.keys()]
+                    downloaded_subs = await asyncio.gather(*sub_tasks)
+                    for idx, (url, filepath) in enumerate(subpages.items()):
+                        sub_html, _ = downloaded_subs[idx]
+                        if sub_html:
+                            # Parse minimal to fix paths
+                            sub_soup = BeautifulSoup(sub_html, 'html.parser')
+                            zip_file.writestr(filepath, str(sub_soup))
+                            
+                # Salvar o index principal atualizado
+                index_html = str(soup)
+                zip_file.writestr("index.html", index_html)
+                
+            # Finalizar o ZIP
+            zip_buffer.seek(0)
+            zip_b64 = base64.b64encode(zip_buffer.read()).decode('utf-8')
+            
+            return {
+                "html": index_html,
+                "status": 200,
+                "size": len(index_html),
+                "zip_base64": zip_b64,
+                "pages_cloned": 1 + len(subpages) if clone_subpages else 1,
+                "assets_cloned": len(assets_to_download)
+            }
+            
     except HTTPException:
         raise
     except Exception as e:
@@ -719,6 +833,23 @@ async def web_scraper(data: dict):
                 images = [img.get('src') for img in soup.find_all('img') if img.get('src')]
                 videos = [v.get('src') for v in soup.find_all(['video', 'source']) if v.get('src')]
                 
+                # Detect embedded videos (YouTube, Vimeo, etc) in iframes
+                for iframe in soup.find_all('iframe'):
+                    src = iframe.get('src', '')
+                    if 'youtube.com' in src or 'vimeo.com' in src or 'dailymotion.com' in src or 'player' in src.lower() or 'embed' in src.lower():
+                        videos.append(src)
+                        
+                # Extract Meta Content
+                metadata = {}
+                title_tag = soup.find('title')
+                if title_tag:
+                    metadata['title'] = title_tag.get_text(strip=True)
+                for meta in soup.find_all('meta'):
+                    name = meta.get('name', meta.get('property', ''))
+                    _content = meta.get('content')
+                    if name and _content:
+                        metadata[name] = _content
+                        
                 # Extract Links/URLs
                 links = []
                 for a in soup.find_all('a', href=True):
@@ -751,6 +882,7 @@ async def web_scraper(data: dict):
                     "target_url": str(response.url),
                     "status_code": response.status,
                     "server": response.headers.get('Server', 'Desconhecido'),
+                    "metadata": metadata,
                     "cookies": cookies_list,
                     "html": {
                         "content": html_content,
@@ -840,3 +972,419 @@ async def catch_request(token: str, request: Request):
         return Response(content=pixel, media_type="image/gif")
     
     return {"status": "ok"}
+
+# ==========================================
+# WAF DETECTOR
+# ==========================================
+
+import socket
+
+@router.post("/waf-detector")
+async def detect_waf(data: dict):
+    """Detecta a presença de Web Application Firewalls"""
+    try:
+        url = data.get("url")
+        if not url:
+            raise HTTPException(status_code=400, detail="URL é obrigatória")
+        
+        validated_url = validate_url_input(url)
+        
+        # Conhecidos headers WAF/CDN
+        waf_signatures = {
+            "Cloudflare": {"headers": ["cf-ray", "cloudflare-nginx", "cf-request-id"], "server": "cloudflare"},
+            "AWS WAF": {"headers": ["x-amzn-requestid", "x-amz-cf-id"], "server": "awselb"},
+            "Akamai": {"headers": ["x-akamai-request-id", "akamai-origin-hop"], "server": "akamai"},
+            "Sucuri": {"headers": ["x-sucuri-id", "x-sucuri-cache"], "server": "sucuri/cloudproxy"},
+            "Imperva / Incapsula": {"headers": ["x-iinfo", "x-cdn"], "server": "incapsula"},
+            "F5 BIG-IP": {"headers": ["x-cnection", "x-wa-info"], "server": "bigip"},
+            "ModSecurity": {"server": "mod_security"},
+            "Barracuda": {"server": "barracudaWAF"},
+            "Fortinet FortiWeb": {"server": "fortiweb", "cookies": ["FORTIWAFSID"]},
+        }
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        }
+        
+        # Testar comportamento suspeito (enviar payload SQLi simples para ver se bloqueia)
+        malicious_url = validated_url
+        if "?" in malicious_url:
+            malicious_url += "&test=1' OR '1'='1"
+        else:
+            malicious_url += "?test=1' OR '1'='1"
+            
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.DummyCookieJar()) as session:
+            # Requisicao Normal
+            try:
+                async with session.get(validated_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10), ssl=False, allow_redirects=True) as normal_resp:
+                    normal_status = normal_resp.status
+                    normal_headers = {k.lower(): v.lower() for k, v in normal_resp.headers.items()}
+                    normal_cookies = {k.lower(): v.value for k, v in normal_resp.cookies.items()}
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Falha na requisição normal: {str(e)}")
+            
+            # Requisicao Maliciosa
+            try:
+                async with session.get(malicious_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10), ssl=False, allow_redirects=True) as mal_resp:
+                    mal_status = mal_resp.status
+            except Exception:
+                mal_status = 0 # Conexão fechada/timeout (comportamento de WAF)
+                
+        # Analisar resultados
+        detected_waf = None
+        confidence = 0
+        details = []
+        
+        server_header = normal_headers.get("server", "")
+        
+        for waf_name, signatures in waf_signatures.items():
+            waf_found = False
+            # Check server string
+            if "server" in signatures and signatures["server"] in server_header:
+                detected_waf = waf_name
+                confidence += 50
+                details.append(f"Server header matches {waf_name} ({server_header})")
+                waf_found = True
+                
+            # Check headers
+            for h in signatures.get("headers", []):
+                if h in normal_headers:
+                    detected_waf = waf_name
+                    confidence += 40
+                    details.append(f"Header '{h}' found, specific to {waf_name}")
+                    waf_found = True
+                    
+            # Check cookies
+            for c in signatures.get("cookies", []):
+                if c.lower() in normal_cookies:
+                    detected_waf = waf_name
+                    confidence += 30
+                    details.append(f"Cookie '{c}' found, specific to {waf_name}")
+                    waf_found = True
+                    
+            if waf_found:
+                break
+                
+        # Check behavioral block
+        blocks = [403, 406, 429, 501, 503]
+        if mal_status in blocks and normal_status == 200:
+            confidence += 40
+            details.append(f"Behavioral Detection: Target returned HTTP {mal_status} for SQLi payload, but 200 for normal request.")
+            if not detected_waf:
+                detected_waf = "Generic/Unknown WAF"
+        elif mal_status == 0 and normal_status == 200:
+            confidence += 40
+            details.append("Behavioral Detection: Connection dropped/timed out for SQLi payload.")
+            if not detected_waf:
+                detected_waf = "Generic/Unknown WAF"
+                
+        if confidence > 100: confidence = 100
+        
+        return {
+            "has_waf": detected_waf is not None,
+            "waf_name": detected_waf or "Nenhum WAF detectado",
+            "confidence": confidence,
+            "details": details if details else ["Nenhum indício de proteção WAF encontrado na resposta base ou comportamental."],
+            "normal_status": normal_status,
+            "malicious_status": mal_status,
+            "server_header": server_header
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# DIRBUSTER WEB
+# ==========================================
+
+import asyncio
+from typing import Tuple
+
+@router.post("/dir-buster")
+async def dir_buster(data: dict):
+    """Fuzzer assíncrono para encontrar arquivos ocultos e expostos."""
+    try:
+        url = data.get("url")
+        if not url:
+            raise HTTPException(status_code=400, detail="URL é obrigatória")
+            
+        validated_url = validate_url_input(url).rstrip('/')
+        
+        # Wordlist enxuta focada em alto impacto
+        wordlist = [
+            "/.env", "/.git/config", "/.svn/entries", "/.htaccess", "/robots.txt", "/sitemap.xml",
+            "/phpinfo.php", "/info.php", "/test.php", "/crossdomain.xml", "/server-status",
+            "/wp-config.php", "/wp-config.php.bak", "/config.php", "/config.inc.php",
+            "/.DS_Store", "/backup.zip", "/backup.sql", "/dump.sql", "/database.sql",
+            "/db.sqlite", "/users.sql", "/admin", "/administrator", "/login", "/wp-admin",
+            "/swagger/v1/swagger.json", "/api-docs", "/v1/api-docs", "/.ssh/id_rsa",
+            "/.aws/credentials", "/package.json", "/composer.json", "/Dockerfile", "/docker-compose.yml"
+        ]
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "*/*"
+        }
+        
+        results = []
+        found_count = 0
+        total_tested = len(wordlist)
+        
+        # Função interna assíncrona para testar 1 path
+        async def test_path(session, path):
+            target = f"{validated_url}{path}"
+            try:
+                # Usa allow_redirects=False para saber se o servidor esconde com 301/302
+                async with session.head(target, headers=headers, timeout=aiohttp.ClientTimeout(total=5), ssl=False, allow_redirects=False) as resp:
+                    status = resp.status
+                    content_len = resp.headers.get("Content-Length", "0")
+                    content_type = resp.headers.get("Content-Type", "")
+                    
+                    if status in [200, 204, 301, 302, 401, 403]:
+                        # Ignorar 403 se for apenas forbidden genérico index
+                        if status == 403 and path == "/admin":
+                            return None
+                        
+                        return {
+                            "path": path,
+                            "url": target,
+                            "status": status,
+                            "size": int(content_len) if content_len.isdigit() else 0,
+                            "type": content_type
+                        }
+            except Exception:
+                pass
+            return None
+
+        # Executa em paralelo (tamanho do lote = 10 para não sobrecarregar e ser bloqueado)
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.DummyCookieJar()) as session:
+            # tasks já iniciam a execução, usando o semáforo para controle
+            sem = asyncio.Semaphore(10)
+            async def bound_test_path(path):
+                async with sem:
+                    return await test_path(session, path)
+            
+            tasks = [bound_test_path(p) for p in wordlist]
+            gathered = await asyncio.gather(*tasks)
+            
+            # Limpa resultados Nulos
+            results = [r for r in gathered if r is not None]
+            
+        # Classifica vulnerabilidades críticas (arquivos que não deveriam estar expostos de jeito nenhum)
+        critical_paths = ["/.env", "/.git/config", "/.aws/credentials", "/.ssh/id_rsa", "/wp-config.php.bak", "/backup.zip", "/dump.sql"]
+        for r in results:
+            if r["path"] in critical_paths and r["status"] == 200:
+                r["critical"] = True
+            else:
+                r["critical"] = False
+                
+        # Ordena: críticos primeiro, status 200 depois, resto depois
+        results.sort(key=lambda x: (not x["critical"], x["status"] != 200, x["path"]))
+            
+        return {
+            "target": validated_url,
+            "total_tested": total_tested,
+            "found_count": len(results),
+            "results": results
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# PORT SCANNER & FINGERPRINTING
+# ==========================================
+
+@router.post("/port-scanner")
+async def port_scanner(data: dict):
+    """Scanner de portas assíncrono com extração de banners."""
+    try:
+        target = data.get("target")
+        if not target:
+            raise HTTPException(status_code=400, detail="Alvo (IP ou Domínio) é obrigatório")
+            
+        import socket
+        from urllib.parse import urlparse
+        
+        # Limpar o input se vier como URL
+        if "://" in target:
+            target = urlparse(target).hostname
+            
+        try:
+            # Tentar resolver o DNS (IP)
+            target_ip = socket.gethostbyname(target)
+        except socket.gaierror:
+            raise HTTPException(status_code=400, detail="Não foi possível resolver o hostname para um IP válido.")
+            
+        # Top 30 portas mais comuns
+        ports_to_scan = [
+            21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 
+            993, 995, 1723, 3306, 3389, 5900, 8080, 8443, 5432, 27017, 
+            6379, 11211, 9200, 8000, 8888, 27015, 25565
+        ]
+        
+        # Mapa de serviços conhecidos
+        port_services = {
+            21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS", 80: "HTTP",
+            110: "POP3", 111: "RPCBind", 135: "MSRPC", 139: "NetBIOS", 143: "IMAP",
+            443: "HTTPS", 445: "SMB", 993: "IMAPS", 995: "POP3S", 1723: "PPTP",
+            3306: "MySQL", 3389: "RDP", 5900: "VNC", 8080: "HTTP-Proxy",
+            8443: "HTTPS-Alt", 5432: "PostgreSQL", 27017: "MongoDB", 
+            6379: "Redis", 11211: "Memcached", 9200: "Elasticsearch",
+            8000: "HTTP-Alt", 8888: "HTTP-Alt", 27015: "Source Engine", 25565: "Minecraft"
+        }
+        
+        async def scan_port(port: int) -> Tuple[int, bool, str]:
+            try:
+                # Conectar com timeout de 1 segundo
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(target_ip, port), timeout=1.0
+                )
+                
+                # Porta aberta! Tentar extrair o banner
+                banner = ""
+                try:
+                    # Enviar um probe genérico se for porta HTTP para encorajar resposta
+                    if port in [80, 8080, 8443, 8000, 8888]:
+                        writer.write(b"HEAD / HTTP/1.0\r\n\r\n")
+                        await writer.drain()
+                        
+                    # Ler até 1024 bytes com timeout curto
+                    data = await asyncio.wait_for(reader.read(1024), timeout=1.0)
+                    if data:
+                        banner = data.decode('utf-8', errors='ignore').strip()
+                        # Limitar tamanho do banner log
+                        banner = banner[:100] + "..." if len(banner) > 100 else banner
+                except Exception:
+                    pass # Timeout lendo banner, normal.
+                finally:
+                    writer.close()
+                    try:
+                        await writer.wait_closed()
+                    except:
+                        pass
+                
+                return (port, True, banner)
+            except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+                return (port, False, "")
+                
+        # Scannear todas em paralelo
+        tasks = [scan_port(p) for p in ports_to_scan]
+        results = await asyncio.gather(*tasks)
+        
+        open_ports = []
+        for port, is_open, banner in results:
+            if is_open:
+                open_ports.append({
+                    "port": port,
+                    "service": port_services.get(port, "Unknown"),
+                    "banner": banner,
+                    "state": "open"
+                })
+                
+        # Ordenar por porta
+        open_ports.sort(key=lambda x: x["port"])
+        
+        return {
+            "target": target,
+            "target_ip": target_ip,
+            "total_scanned": len(ports_to_scan),
+            "open_count": len(open_ports),
+            "open_ports": open_ports
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# SUBDOMAIN MAPPER
+# ==========================================
+
+import re
+
+@router.post("/subdomain-mapper")
+async def subdomain_mapper(data: dict):
+    """Enumerador de Subdomínios usando crt.sh (Certificate Transparency)"""
+    try:
+        domain = data.get("domain")
+        if not domain:
+            raise HTTPException(status_code=400, detail="Domínio é obrigatório")
+            
+        import socket
+        from urllib.parse import urlparse
+        
+        # Limpar o input para obter apenas o domínio principal
+        if "://" in domain:
+            domain = urlparse(domain).hostname
+            
+        # Remover 'www.' se presente
+        if domain.startswith("www."):
+            domain = domain[4:]
+            
+        # Validar formato do domínio básico
+        if not re.match(r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', domain):
+            raise HTTPException(status_code=400, detail="Formato de domínio inválido.")
+            
+        # Consultar crt.sh
+        crt_url = f"https://crt.sh/?q=%.{domain}&output=json"
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json"
+        }
+        
+        subdomains = set()
+        raw_results = []
+        
+        try:
+            async with aiohttp.ClientSession(cookie_jar=aiohttp.DummyCookieJar()) as session:
+                async with session.get(crt_url, headers=headers, timeout=aiohttp.ClientTimeout(total=15), ssl=False) as response:
+                    if response.status == 200:
+                        crt_data = await response.json()
+                        for entry in crt_data:
+                            name_value = entry.get("name_value", "")
+                            # name_value can contain multiple subdomains separated by newline
+                            for sub in name_value.split("\n"):
+                                sub = sub.strip().lower()
+                                if sub and sub.endswith(domain) and not sub.startswith("*"):
+                                    subdomains.add(sub)
+                                    raw_results.append(entry)
+                    else:
+                        raise HTTPException(status_code=502, detail=f"Erro ao consultar crt.sh: HTTP {response.status}")
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=504, detail="Timeout ao consultar a base de dados do crt.sh. Tente novamente mais tarde.")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro na consulta: {str(e)}")
+            
+        # Resolver IPs para os subdomínios encontrados (limitado aos primeiros 50 para evitar delay)
+        async def resolve_host(sub):
+            try:
+                loop = asyncio.get_event_loop()
+                # dns resolution is blocking, run in executor
+                ip = await loop.run_in_executor(None, socket.gethostbyname, sub)
+                return {"subdomain": sub, "ip": ip, "resolved": True}
+            except Exception:
+                return {"subdomain": sub, "ip": "Não resolvido", "resolved": False}
+                
+        # Resolve using asyncio gather
+        tasks = [resolve_host(sub) for sub in sorted(list(subdomains))[:50]]
+        resolved_results = await asyncio.gather(*tasks)
+        
+        # Add remaining unresolved if total > 50
+        for sub in sorted(list(subdomains))[50:]:
+            resolved_results.append({"subdomain": sub, "ip": "Não resolvido (Limite Excedido)", "resolved": False})
+            
+        return {
+            "domain": domain,
+            "total_found": len(subdomains),
+            "subdomains": resolved_results
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
