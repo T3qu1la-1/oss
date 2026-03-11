@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
-from mega_scanner import MegaVulnerabilityScanner
+from scanner import VulnerabilityScanner
 import asyncio
 
 # Import auth routes and utilities
@@ -176,8 +176,8 @@ async def run_scan(scan_id: str, target: str, scan_type: str):
             "update": {"status": "running", "progress": 0}
         })
         
-        # Executar scan com o MEGA scanner (70+ testes)
-        scanner = MegaVulnerabilityScanner(ws_manager)
+        # Executar scan rápido com o VulnerabilityScanner (scanner.py)
+        scanner = VulnerabilityScanner(ws_manager)
         
         async def status_callback(update):
             await db.scans.update_one({"id": scan_id}, {"$set": update})

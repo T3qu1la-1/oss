@@ -31,7 +31,14 @@ export const AuthProvider = ({ children }) => {
           setUser(response.data);
         } catch (error) {
           console.error('Error loading user:', error);
-          logout();
+          // Only force logout on genuine 401 Unauthorized token failures
+          if (error.response && error.response.status === 401) {
+             logout();
+          } else {
+             // Backend might be restarting or rate limited. 
+             // We won't clear localStorage token here, but we set user to null so they can wait/retry.
+             setUser(null);
+          }
         }
       }
       setLoading(false);

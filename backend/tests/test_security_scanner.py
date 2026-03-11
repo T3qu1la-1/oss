@@ -7,7 +7,23 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8000').rstrip('/')
+
+import uuid
+TOKEN = None
+HEADERS = {}
+
+def get_auth_headers():
+    global TOKEN, HEADERS
+    if HEADERS: return HEADERS
+    username = f"test_{uuid.uuid4().hex[:8]}"
+    pwd = "TestPassword123!"
+    requests.post(f"{BASE_URL}/api/auth/register", json={"username": username, "password": pwd, "role": "admin"})
+    resp = requests.post(f"{BASE_URL}/api/auth/login", data={"username": username, "password": pwd})
+    if resp.status_code == 200:
+        TOKEN = resp.json().get("access_token")
+        HEADERS = {"Authorization": f"Bearer {TOKEN}"}
+    return HEADERS
 
 class TestHealthAndRoot:
     """Test basic API health and root endpoint"""
@@ -22,7 +38,7 @@ class TestHealthAndRoot:
     
     def test_stats_endpoint(self):
         """Test stats endpoint returns expected structure"""
-        response = requests.get(f"{BASE_URL}/api/stats")
+        response = requests.get(f"{BASE_URL}/api/stats", headers=get_auth_headers())
         assert response.status_code == 200
         data = response.json()
         assert "totalScans" in data
@@ -38,7 +54,7 @@ class TestScansAPI:
     
     def test_list_scans(self):
         """Test GET /api/scans returns list"""
-        response = requests.get(f"{BASE_URL}/api/scans")
+        response = requests.get(f"{BASE_URL}/api/scans", headers=get_auth_headers())
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -50,7 +66,7 @@ class TestScansAPI:
             "target": "http://testphp.vulnweb.com",
             "scanType": "web"
         }
-        response = requests.post(f"{BASE_URL}/api/scans", json=payload)
+        response = requests.post(f"{BASE_URL}/api/scans", json=payload, headers=get_auth_headers())
         assert response.status_code == 200
         data = response.json()
         
@@ -72,13 +88,13 @@ class TestScansAPI:
             "target": "http://testphp.vulnweb.com",
             "scanType": "api"
         }
-        create_response = requests.post(f"{BASE_URL}/api/scans", json=payload)
+        create_response = requests.post(f"{BASE_URL}/api/scans", json=payload, headers=get_auth_headers())
         assert create_response.status_code == 200
         created_scan = create_response.json()
         scan_id = created_scan["id"]
         
         # Get scan by ID
-        get_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}")
+        get_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}", headers=get_auth_headers())
         assert get_response.status_code == 200
         fetched_scan = get_response.json()
         
@@ -90,19 +106,19 @@ class TestScansAPI:
     
     def test_get_nonexistent_scan(self):
         """Test GET /api/scans/{id} with invalid ID returns 404"""
-        response = requests.get(f"{BASE_URL}/api/scans/nonexistent-id-12345")
+        response = requests.get(f"{BASE_URL}/api/scans/nonexistent-id-12345", headers=get_auth_headers())
         assert response.status_code == 404
     
     def test_create_scan_missing_fields(self):
         """Test POST /api/scans with missing required fields"""
         # Missing target
         payload = {"name": "TEST_Missing_Target"}
-        response = requests.post(f"{BASE_URL}/api/scans", json=payload)
+        response = requests.post(f"{BASE_URL}/api/scans", json=payload, headers=get_auth_headers())
         assert response.status_code == 422  # Validation error
         
         # Missing name
         payload = {"target": "http://example.com"}
-        response = requests.post(f"{BASE_URL}/api/scans", json=payload)
+        response = requests.post(f"{BASE_URL}/api/scans", json=payload, headers=get_auth_headers())
         assert response.status_code == 422
 
 
@@ -112,13 +128,13 @@ class TestVulnerabilitiesAPI:
     def test_get_vulnerabilities_for_scan(self):
         """Test GET /api/scans/{id}/vulnerabilities returns list"""
         # First get existing scans
-        scans_response = requests.get(f"{BASE_URL}/api/scans")
+        scans_response = requests.get(f"{BASE_URL}/api/scans", headers=get_auth_headers())
         scans = scans_response.json()
         
         if len(scans) > 0:
             # Get vulnerabilities for first scan
             scan_id = scans[0]["id"]
-            response = requests.get(f"{BASE_URL}/api/scans/{scan_id}/vulnerabilities")
+            response = requests.get(f"{BASE_URL}/api/scans/{scan_id}/vulnerabilities", headers=get_auth_headers())
             assert response.status_code == 200
             data = response.json()
             assert isinstance(data, list)
@@ -137,7 +153,7 @@ class TestVulnerabilitiesAPI:
     
     def test_get_vulnerabilities_nonexistent_scan(self):
         """Test vulnerabilities for non-existent scan returns empty list"""
-        response = requests.get(f"{BASE_URL}/api/scans/nonexistent-scan-id/vulnerabilities")
+        response = requests.get(f"{BASE_URL}/api/scans/nonexistent-scan-id/vulnerabilities", headers=get_auth_headers())
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -155,7 +171,7 @@ class TestScanExecution:
             "target": "http://testphp.vulnweb.com",
             "scanType": "full"
         }
-        create_response = requests.post(f"{BASE_URL}/api/scans", json=payload)
+        create_response = requests.post(f"{BASE_URL}/api/scans", json=payload, headers=get_auth_headers())
         assert create_response.status_code == 200
         scan_id = create_response.json()["id"]
         
@@ -168,7 +184,7 @@ class TestScanExecution:
             time.sleep(poll_interval)
             elapsed += poll_interval
             
-            status_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}")
+            status_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}", headers=get_auth_headers())
             assert status_response.status_code == 200
             scan_data = status_response.json()
             
@@ -178,12 +194,12 @@ class TestScanExecution:
                 break
         
         # Verify scan completed
-        final_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}")
+        final_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}", headers=get_auth_headers())
         final_scan = final_response.json()
         assert final_scan["status"] == "completed", f"Scan status: {final_scan['status']}, task: {final_scan.get('currentTask')}"
         
         # Verify vulnerabilities were found
-        vulns_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}/vulnerabilities")
+        vulns_response = requests.get(f"{BASE_URL}/api/scans/{scan_id}/vulnerabilities", headers=get_auth_headers())
         assert vulns_response.status_code == 200
         vulnerabilities = vulns_response.json()
         
@@ -204,12 +220,12 @@ class TestStatsAccuracy:
     def test_stats_reflect_database(self):
         """Test that stats endpoint reflects actual database counts"""
         # Get stats
-        stats_response = requests.get(f"{BASE_URL}/api/stats")
+        stats_response = requests.get(f"{BASE_URL}/api/stats", headers=get_auth_headers())
         assert stats_response.status_code == 200
         stats = stats_response.json()
         
         # Get all scans
-        scans_response = requests.get(f"{BASE_URL}/api/scans")
+        scans_response = requests.get(f"{BASE_URL}/api/scans", headers=get_auth_headers())
         scans = scans_response.json()
         
         # Stats totalScans should match scans list length

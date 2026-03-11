@@ -15,13 +15,11 @@
 session_start();
 
 // ==========================================
-// CONFIGURAÇÃO
+// CONFIGURAÇÃO INTELIGENTE
 // ==========================================
-$MAX_REQUESTS_PER_MINUTE = 60;
-$BLOCK_DURATION_SECONDS = 300; // 5 min
+$MAX_REQUESTS_PER_MINUTE = 150; // Aumentado para tolerar multi-requisições React (Pentester Tools)
+$BLOCK_DURATION_SECONDS = 60;   // Punir abuso por apenas 60 segundos p/ não travar usuários reais por muito tempo
 $WHITELIST_IPS = ['127.0.0.1', '::1'];
-
-// ==========================================
 // HEADERS DE SEGURANÇA
 // ==========================================
 header('X-Content-Type-Options: nosniff');
