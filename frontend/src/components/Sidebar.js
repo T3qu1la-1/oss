@@ -31,6 +31,7 @@ const Sidebar = ({ currentPage, onPageChange }) => {
     { id: 'emoji', name: 'Emoji-Crypt', icon: Lock },
     { id: 'cookie-catcher', name: 'Cookie Catcher', icon: Shield, badge: 'NOVO' },
     { id: 'web-scraper', name: 'Web Scraper', icon: Database, badge: 'NOVO' },
+    { id: 'request-catcher', name: 'Request Catcher', icon: RadioReceiver, badge: 'NOVO' },
     { id: 'geokit', name: 'GeoKit', icon: Globe },
     { id: 'reports', name: 'Relatórios', icon: FileText }
   ];

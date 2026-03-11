@@ -28,6 +28,7 @@ import FaceRecognition from './pages/FaceRecognition';
 import ExploitTester from './pages/ExploitTester';
 import CookieCatcher from './pages/CookieCatcher';
 import WebScraper from './pages/WebScraper';
+import RequestCatcher from './pages/RequestCatcher';
 import AdminPanel from './pages/AdminPanel';
 import Sidebar from './components/Sidebar';
 import './styles/global.css';
@@ -97,6 +98,8 @@ const AppContent = () => {
         return <CookieCatcher />;
       case 'web-scraper':
         return <WebScraper />;
+      case 'request-catcher':
+        return <RequestCatcher />;
       case 'reports':
         return <Reports />;
       case 'osint':

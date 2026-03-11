@@ -1,5 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from fastapi.responses import JSONResponse, Response
 import requests
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -771,3 +771,72 @@ async def web_scraper(data: dict):
         raise HTTPException(status_code=408, detail="Timeout ao carregar a página alvo.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Falha no Scraping: {str(e)}")
+
+# ==========================================
+# REQUEST CATCHER (BURACO NEGRO)
+# ==========================================
+
+import uuid
+from datetime import datetime
+
+# InMemory Storage para Logs do Request Catcher (idealmente iria pro BD, mas para performance em memória fica mais rápido)
+catcher_sessions = {}
+
+@router.post("/catcher/generate")
+async def generate_catcher_url(request: Request):
+    """Gera um token único para o Request Catcher"""
+    token = str(uuid.uuid4())[:8] # Cria um ID curto de 8 caracteres
+    catcher_sessions[token] = []
+    
+    # Monta a URL base baseada no request atual
+    base_url = str(request.base_url).rstrip("/")
+    capture_url = f"{base_url}/api/tools/catch/{token}"
+    
+    return {"token": token, "capture_url": capture_url}
+
+@router.get("/catcher/logs/{token}")
+async def get_catcher_logs(token: str):
+    """Retorna os logs capturados para um token específico"""
+    if token not in catcher_sessions:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada ou expirada.")
+    
+    return {"token": token, "logs": catcher_sessions[token]}
+
+@router.api_route("/catch/{token}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def catch_request(token: str, request: Request):
+    """Endpoint Mágico que intercepta tudo enviado pela vítima"""
+    if token not in catcher_sessions:
+        # Retorna algo neutro se o token não existir (evita detecção)
+        return {"status": "ok"}
+        
+    try:
+        body = await request.body()
+        body_text = body.decode('utf-8', errors='ignore') if body else None
+    except:
+        body_text = "<binary or empty>"
+        
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "method": request.method,
+        "url": str(request.url),
+        "client_ip": request.client.host if request.client else "Unknown",
+        "headers": dict(request.headers),
+        "query_params": dict(request.query_params),
+        "body": body_text,
+        "cookies": dict(request.cookies)
+    }
+    
+    # Salva na memória, restrito aos ultimos 50 requests por token pra nao estourar a RAM
+    catcher_sessions[token].insert(0, log_entry)
+    if len(catcher_sessions[token]) > 50:
+        catcher_sessions[token] = catcher_sessions[token][:50]
+        
+    # Retorna uma imagem de pixel invisivel, JSON ou texto dependendo do que o cliente pediu
+    accept = request.headers.get("accept", "")
+    if "image" in accept:
+        from fastapi.responses import Response
+        # Pixel transparente 1x1 GIF
+        pixel = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
+        return Response(content=pixel, media_type="image/gif")
+    
+    return {"status": "ok"}
