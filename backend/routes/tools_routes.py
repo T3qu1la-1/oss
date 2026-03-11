@@ -680,3 +680,94 @@ async def extract_cookies(data: dict):
         raise HTTPException(status_code=408, detail="Timeout ao tentar se conectar ao servidor alvo.")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao capturar cookies: {str(e)}")
+
+@router.post("/web-scraper")
+async def web_scraper(data: dict):
+    """Realiza web scraping avançado extraindo HTML, CSS, JS, Imagens, Vídeos, URLs e Cookies"""
+    try:
+        url = data.get("url")
+        if not url:
+            raise HTTPException(status_code=400, detail="URL é obrigatória")
+        
+        validated_url = validate_url_input(url)
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.DummyCookieJar()) as session:
+            async with session.get(validated_url, headers=headers, timeout=aiohttp.ClientTimeout(total=15), ssl=False, allow_redirects=True) as response:
+                
+                content_type = response.headers.get('Content-Type', '')
+                if 'text/html' not in content_type:
+                    raise HTTPException(status_code=400, detail=f"O alvo não retornou HTML. Tipo recebido: {content_type}")
+                
+                html_content = await response.text()
+                soup = BeautifulSoup(html_content, 'html.parser')
+                
+                # Extract CSS (Inline + External)
+                css_links = [link.get('href') for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
+                inline_styles = [style.get_text() for style in soup.find_all('style') if style.get_text().strip()]
+                
+                # Extract JS (Inline + External)
+                js_links = [script.get('src') for script in soup.find_all('script') if script.get('src')]
+                inline_scripts = [script.get_text() for script in soup.find_all('script') if not script.get('src') and script.get_text().strip()]
+                
+                # Extract Media (Images, Videos, Audio)
+                images = [img.get('src') for img in soup.find_all('img') if img.get('src')]
+                videos = [v.get('src') for v in soup.find_all(['video', 'source']) if v.get('src')]
+                
+                # Extract Links/URLs
+                links = []
+                for a in soup.find_all('a', href=True):
+                    href = a.get('href')
+                    if href and not href.startswith('#') and not href.startswith('javascript:'):
+                        links.append({
+                            "text": a.get_text(strip=True)[:50],
+                            "href": href
+                        })
+                
+                # Extract Cookies
+                cookies_list = []
+                for cookie_name, cookie_morsel in response.cookies.items():
+                    cookies_list.append({
+                        "name": cookie_name,
+                        "value": cookie_morsel.value,
+                        "domain": cookie_morsel.get('domain', ''),
+                        "path": cookie_morsel.get('path', '/'),
+                        "secure": cookie_morsel.get('secure', False),
+                        "httponly": cookie_morsel.get('httponly', False)
+                    })
+                
+                from urllib.parse import urljoin
+                
+                # Format to Absolute URLs helper
+                def make_absolute(url_list):
+                    return list(set(urljoin(str(response.url), u) for u in url_list))
+                
+                return {
+                    "target_url": str(response.url),
+                    "status_code": response.status,
+                    "server": response.headers.get('Server', 'Desconhecido'),
+                    "cookies": cookies_list,
+                    "html": {
+                        "content": html_content,
+                        "length": len(html_content)
+                    },
+                    "assets": {
+                        "css_files": make_absolute(css_links),
+                        "inline_css": inline_styles,
+                        "js_files": make_absolute(js_links),
+                        "inline_js": inline_scripts,
+                        "images": make_absolute(images),
+                        "videos": make_absolute(videos)
+                    },
+                    "links": links
+                }
+                
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=408, detail="Timeout ao carregar a página alvo.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Falha no Scraping: {str(e)}")

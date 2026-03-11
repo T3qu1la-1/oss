@@ -30,6 +30,7 @@ const Sidebar = ({ currentPage, onPageChange }) => {
     { id: 'exif', name: 'EXIF Hunter', icon: Image },
     { id: 'emoji', name: 'Emoji-Crypt', icon: Lock },
     { id: 'cookie-catcher', name: 'Cookie Catcher', icon: Shield, badge: 'NOVO' },
+    { id: 'web-scraper', name: 'Web Scraper', icon: Database, badge: 'NOVO' },
     { id: 'geokit', name: 'GeoKit', icon: Globe },
     { id: 'reports', name: 'Relatórios', icon: FileText }
   ];
