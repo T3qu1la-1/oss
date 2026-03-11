@@ -14,27 +14,23 @@ const LoginPage = ({ onNavigate }) => {
   const [checkingUA, setCheckingUA] = useState(true);
 
   useEffect(() => {
-    let script;
-    if (checkingUA) {
-      // Load the Visme script dinamically for the Anti-DDoS
-      script = document.createElement('script');
-      script.src = "https://static-bundles.visme.co/forms/vismeforms-embed.js";
-      script.async = true;
-      document.body.appendChild(script);
+    // Load the Visme script dinamically for the Anti-DDoS
+    const script = document.createElement('script');
+    script.src = "https://static-bundles.visme.co/forms/vismeforms-embed.js";
+    script.async = true;
+    document.body.appendChild(script);
 
-      // Simulate the UA checking process for 4s before showing login page
-      const timer = setTimeout(() => {
-        setCheckingUA(false);
-      }, 4000); 
+    // Simulate the UA checking process for 4s before showing login page
+    const timer = setTimeout(() => {
+      setCheckingUA(false);
+    }, 4000); 
 
-      return () => {
-        clearTimeout(timer);
-        if (script && document.body.contains(script)) {
-          document.body.removeChild(script);
-        }
-      };
-    }
-  }, [checkingUA]);
+    return () => {
+      clearTimeout(timer);
+      // We do not remove the script here to prevent the external Visme code from crashing
+      // when it tries to access elements or complete network requests after React unmounts it.
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,14 +48,14 @@ const LoginPage = ({ onNavigate }) => {
     setLoading(false);
   };
 
-  // The Anti-DDoS Screen (Black Background, Visme Embed)
-  if (checkingUA) {
-    return (
+  return (
+    <>
+      {/* The Anti-DDoS Screen (Black Background, Visme Embed) */}
       <div style={{ 
         margin: 0, 
         height: '100vh', 
         width: '100vw',
-        display: 'flex', 
+        display: checkingUA ? 'flex' : 'none', 
         justifyContent: 'center', 
         alignItems: 'center', 
         background: '#000000', // FUNDO PRETO
@@ -83,92 +79,90 @@ const LoginPage = ({ onNavigate }) => {
           </div>
         </div>
       </div>
-    );
-  }
 
-  // The Regular Login Screen
-  return (
-    <div className="auth-minimal">
-      <div className="auth-container-minimal">
-        <div className="auth-box">
-          <div className="auth-header-minimal">
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-              <div style={{
-                width: '48px', height: '48px',
-                borderRadius: '50%',
-                background: 'var(--surface)',
-                border: '1px solid var(--line)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <Eye size={22} />
+      {/* The Regular Login Screen */}
+      <div className="auth-minimal" style={{ display: checkingUA ? 'none' : 'flex' }}>
+        <div className="auth-container-minimal">
+          <div className="auth-box">
+            <div className="auth-header-minimal">
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <div style={{
+                  width: '48px', height: '48px',
+                  borderRadius: '50%',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <Eye size={22} />
+                </div>
               </div>
-            </div>
-            <h1 className="auth-title">Entrar</h1>
-            <div className="title-underline"></div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="auth-form-minimal">
-            {error && (
-              <div className="error-box">
-                <AlertCircle size={16} />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="input-group">
-              <label>Email</label>
-              <input 
-                type="email" 
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
+              <h1 className="auth-title">Entrar</h1>
+              <div className="title-underline"></div>
             </div>
 
-            <div className="input-group">
-              <label>Senha</label>
-              <input 
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-
-            <button 
-              type="submit"
-              className="btn-minimal"
-              disabled={loading}
-            >
-              {loading ? 'Entrando...' : (
-                <>
-                  Entrar <ArrowRight size={18} />
-                </>
+            <form onSubmit={handleSubmit} className="auth-form-minimal">
+              {error && (
+                <div className="error-box">
+                  <AlertCircle size={16} />
+                  <span>{error}</span>
+                </div>
               )}
-            </button>
-          </form>
 
-          <div className="auth-footer-minimal">
-            <p>
-              Não tem conta?{' '}
-              <button onClick={() => onNavigate('register')} className="link-minimal">
-                Criar conta
+              <div className="input-group">
+                <label>Email</label>
+                <input 
+                  type="email" 
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="input-group">
+                <label>Senha</label>
+                <input 
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="btn-minimal"
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : (
+                  <>
+                    Entrar <ArrowRight size={18} />
+                  </>
+                )}
               </button>
-            </p>
-            <button onClick={() => onNavigate('telegram-login')} className="link-minimal">
-              Entrar via Telegram
-            </button>
-            <button onClick={() => onNavigate('landing')} className="link-minimal">
-              ← Voltar
-            </button>
+            </form>
+
+            <div className="auth-footer-minimal">
+              <p>
+                Não tem conta?{' '}
+                <button onClick={() => onNavigate('register')} className="link-minimal">
+                  Criar conta
+                </button>
+              </p>
+              <button onClick={() => onNavigate('telegram-login')} className="link-minimal">
+                Entrar via Telegram
+              </button>
+              <button onClick={() => onNavigate('landing')} className="link-minimal">
+                ← Voltar
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
