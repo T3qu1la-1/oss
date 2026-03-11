@@ -23,6 +23,7 @@ const Dashboard = ({ onNavigate }) => {
     { id: 'academy', name: 'Academy', icon: BookOpen, desc: 'Centro de aprendizado', tag: 'Educação' },
     { id: 'exif', name: 'EXIF Hunter', icon: Image, desc: 'Extração de metadados', tag: 'Análise' },
     { id: 'emoji', name: 'Emoji-Crypt', icon: Lock, desc: 'Esteganografia digital', tag: 'Cripto' },
+    { id: 'cookie-catcher', name: 'Cookie Catcher', icon: Shield, desc: 'Extração de cookies e headers', tag: 'Web' },
     { id: 'geokit', name: 'GeoKit', icon: Globe, desc: 'Ferramentas de geolocalização', tag: 'OSINT' },
     { id: 'reports', name: 'Relatórios', icon: FileText, desc: 'Gerar relatórios de scans', tag: 'Geral' },
   ];

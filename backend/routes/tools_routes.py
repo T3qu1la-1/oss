@@ -620,3 +620,63 @@ def generate_mitigation(exploit_type: str) -> str:
     }
     
     return mitigations.get(exploit_type, "Implemente validação rigorosa de entrada e princípio do menor privilégio.")
+
+@router.post("/extract-cookies")
+async def extract_cookies(data: dict):
+    """Extrai cookies e cabeçalhos de segurança de uma URL"""
+    try:
+        url = data.get("url")
+        if not url:
+            raise HTTPException(status_code=400, detail="URL é obrigatória")
+        
+        # Validate URL
+        validated_url = validate_url_input(url)
+        
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.DummyCookieJar()) as session:
+            # allow_redirects=True to follow redirects and gather more cookies
+            async with session.get(validated_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10), ssl=False, allow_redirects=True) as response:
+                
+                # Extrair cookies do objeto de resposta (Set-Cookie headers processados)
+                cookies_list = []
+                for cookie_name, cookie_morsel in response.cookies.items():
+                    cookies_list.append({
+                        "name": cookie_name,
+                        "value": cookie_morsel.value,
+                        "domain": cookie_morsel.get('domain', ''),
+                        "path": cookie_morsel.get('path', '/'),
+                        "secure": cookie_morsel.get('secure', False),
+                        "httponly": cookie_morsel.get('httponly', False),
+                        "samesite": cookie_morsel.get('samesite', 'None'),
+                        "expires": cookie_morsel.get('expires', '')
+                    })
+                    
+                # Extrair Cabeçalhos Relevantes
+                relevant_headers = {}
+                security_headers = [
+                    'server', 'x-powered-by', 'strict-transport-security', 
+                    'content-security-policy', 'x-frame-options', 'x-content-type-options',
+                    'x-xss-protection', 'access-control-allow-origin'
+                ]
+                
+                for key, val in response.headers.items():
+                    if key.lower() in security_headers or key.lower().startswith('x-'):
+                        relevant_headers[key] = val
+                
+                server_name = response.headers.get('Server', 'Desconhecido')
+                
+                return {
+                    "url": validated_url,
+                    "status_code": response.status,
+                    "server": server_name,
+                    "cookies": cookies_list,
+                    "headers": relevant_headers
+                }
+                
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=408, detail="Timeout ao tentar se conectar ao servidor alvo.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao capturar cookies: {str(e)}")
