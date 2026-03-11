@@ -130,15 +130,30 @@ async def login(credentials: UserLogin):
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
     """Get current user info"""
+    # Se for admin, retorne imediatamente
+    if current_user.get("role") == "admin":
+        return {
+            "id": current_user['id'],
+            "email": current_user.get('email', 'admin@local'),
+            "username": ADMIN_CREDENTIALS.get('username', 'Admin Master') if ADMIN_CREDENTIALS else 'Admin',
+            "created_at": datetime.utcnow()
+        }
+
+    # Tentar usuários comuns
     user = await users_collection.find_one({"id": current_user['id']})
+    
+    # Tentar usuários do Telegram
+    if not user:
+        user = await telegram_users_collection.find_one({"id": current_user['id']})
+
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     return {
         "id": user['id'],
-        "email": user['email'],
-        "username": user['username'],
-        "created_at": user['created_at']
+        "email": user.get('email', f"telegram_{user.get('telegram_id')}@telegram.org"),
+        "username": user.get('username', user.get('telegram_username', 'User')),
+        "created_at": user.get('created_at', datetime.utcnow())
     }
 
 @router.post("/logout")
