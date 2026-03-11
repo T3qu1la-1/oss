@@ -201,13 +201,24 @@ class RocksCursor:
         self.projection = projection
         self._sort_key = None
         self._sort_direction = 1
+        self._skip = 0
+        self._limit = 0
 
     def sort(self, key: str, direction: int = 1):
         self._sort_key = key
         self._sort_direction = direction
         return self
 
+    def skip(self, skip_count: int):
+        self._skip = skip_count
+        return self
+
+    def limit(self, limit_count: int):
+        self._limit = limit_count
+        return self
+
     async def to_list(self, length: int = 1000) -> List[Dict]:
+        _len = self._limit if self._limit > 0 else length
         async with self.collection._lock:
             results = []
             for doc in self.collection._get_all_docs():
@@ -219,7 +230,11 @@ class RocksCursor:
                     key=lambda x: x.get(self._sort_key, ''),
                     reverse=(self._sort_direction == -1)
                 )
-            return results[:length]
+            
+            if self._skip > 0:
+                results = results[self._skip:]
+
+            return results[:_len]
 
 
 class InsertResult:

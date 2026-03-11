@@ -34,12 +34,12 @@ class RateLimiter:
         self.cleanup_interval = 60  # Limpar a cada 60 segundos
         self.last_cleanup = datetime.now()
         
-        # Limites configuráveis inteligentes (Ajustados para uso pesado UI/Pentester)
+        # Limites configuráveis inteligentes (Ajustados para uso pesado UI/Pentester e polling rápido)
         self.limits = {
-            "global": {"requests": 400, "window": 60},  # 400 req/min (dobrado p/ navegação veloz)
-            "auth": {"requests": 30, "window": 60},     # 30 login/register por min
-            "scan": {"requests": 60, "window": 60},     # 60 scans/polls por min (1 por segundo de tolerância)
-            "tools": {"requests": 150, "window": 60},   # 150 tool requests por min (suporte para payloads em massa)
+            "global": {"requests": 1000, "window": 60}, # 1000 req/min (permite navegação fluida em SPAs pesados)
+            "auth": {"requests": 50, "window": 60},     # 50 login/register por min (foco em prevenir brute-force)
+            "scan": {"requests": 200, "window": 60},    # 200 scans/polls por min (acomoda polling a cada ~300ms na interface)
+            "tools": {"requests": 500, "window": 60},   # 500 tool requests por min (suporte extenso para ferramentas OSINT interativas)
         }
     
     def _cleanup_old_requests(self):
