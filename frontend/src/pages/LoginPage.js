@@ -49,20 +49,51 @@ const LoginPage = ({ onNavigate }) => {
   };
 
   return (
-    <>
-      {/* The Anti-DDoS Screen (Black Background, Visme Embed) */}
+    <div style={{ position: 'relative', minHeight: '100vh', width: '100vw', overflow: 'hidden', background: '#000' }}>
+      {/* Background Video (Person walking) */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        src="/assets/hero-bg.mp4"
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: '100vw',
+          height: '100vh',
+          objectFit: 'cover',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 0
+        }}
+      />
+      {/* Dark Black Overlay over the video */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        background: 'rgba(0, 0, 0, 0.85)',
+        zIndex: 1
+      }} />
+
+      {/* The Anti-DDoS Screen */}
       <div style={{ 
         margin: 0, 
         height: '100vh', 
         width: '100vw',
-        display: checkingUA ? 'flex' : 'none', 
+        display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        background: '#000000', // FUNDO PRETO
         position: 'fixed',
         top: 0,
         left: 0,
-        zIndex: 9999
+        zIndex: 9999,
+        opacity: checkingUA ? 1 : 0,
+        pointerEvents: checkingUA ? 'auto' : 'none',
+        transition: 'opacity 0.8s ease-in-out'
       }}>
         <div style={{ textAlign: 'center', width: '100%' }}>
           <p style={{ color: '#00ff41', fontFamily: 'monospace', marginBottom: '20px', fontSize: '1.2rem', textShadow: '0 0 5px #00ff41' }}>
@@ -81,7 +112,14 @@ const LoginPage = ({ onNavigate }) => {
       </div>
 
       {/* The Regular Login Screen */}
-      <div className="auth-minimal" style={{ display: checkingUA ? 'none' : 'flex' }}>
+      <div className="auth-minimal" style={{ 
+        background: 'transparent', 
+        opacity: checkingUA ? 0 : 1,
+        pointerEvents: checkingUA ? 'none' : 'auto',
+        transition: 'opacity 0.8s ease-in-out',
+        position: 'relative',
+        zIndex: 10
+      }}>
         <div className="auth-container-minimal">
           <div className="auth-box">
             <div className="auth-header-minimal">
@@ -162,7 +200,7 @@ const LoginPage = ({ onNavigate }) => {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
