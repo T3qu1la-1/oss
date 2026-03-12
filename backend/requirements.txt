@@ -29,3 +29,4 @@ Pillow==10.2.0
 beautifulsoup4>=4.12.0
 python-telegram-bot>=21.0
 psutil>=5.9.0
+rocksdict>=0.3.10

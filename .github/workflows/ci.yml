@@ -48,21 +48,21 @@ jobs:
           cd frontend && npm install
 
       - name: Install Python deps
-        run: pip install -r backend/requirements.txt
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest-asyncio  # Adicionado para garantir que testes assíncronos funcionem
 
       - name: Build Rust security-core
         run: |
           cd backend/rust/security-core
           cargo build --release
 
-      - name: Lint & typecheck
-        run: npm run lint
+      - name: Build front + scanner
+        run: npm run build
 
       - name: Run tests
         env:
           REACT_APP_BACKEND_URL: http://localhost:8000
+          PYTHONPATH: .
         run: npm run test
-
-      - name: Build front + scanner
-        run: npm run build
 

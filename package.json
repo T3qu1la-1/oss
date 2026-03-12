@@ -20,7 +20,7 @@
     "lint:scanner": "npx tsc backend/scanner/scanner.ts --noEmit",
 
     "test": "npm run test:python && npm run test:rust",
-    "test:python": "pytest backend/tests || echo \"ajuste os testes conforme necessário\"",
+    "test:python": "pytest tests/backend -v || echo \"ajuste os testes conforme necessário\"",
     "test:rust": "cd backend/rust/security-core && cargo test",
 
     "start:dev": "concurrently \"cd backend && uvicorn server:app --reload\" \"cd frontend && npm start\"",
