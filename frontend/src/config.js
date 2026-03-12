@@ -2,7 +2,7 @@
  * ⚙️ CONFIGURAÇÃO GLOBAL DO FRONTEND
  */
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 
 export const API_URL = BACKEND_URL.endsWith('/') ? BACKEND_URL.slice(0, -1) : BACKEND_URL;
 
