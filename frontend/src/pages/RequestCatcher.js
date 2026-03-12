@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { RadioReceiver, Copy, RefreshCw, Trash2, Crosshair, Globe, Monitor, Code, ShieldAlert, Cpu } from 'lucide-react';
@@ -15,12 +15,34 @@ const RequestCatcher = () => {
   const [selectedLog, setSelectedLog] = useState(null);
   const intervalRef = useRef(null);
 
+  const fetchLogs = useCallback(async () => {
+    if (!catcherToken) return;
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/tools/catcher/logs/${catcherToken}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLogs(response.data.logs);
+    } catch (err) {
+      console.error("Erro ao buscar logs:", err);
+    }
+  }, [catcherToken, token]);
+
+  const startPolling = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    fetchLogs(); // Manda buscar 1x imediatamente
+    intervalRef.current = setInterval(fetchLogs, 3000); // Polling a cada 3s
+  }, [fetchLogs]);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  }, []);
+
   useEffect(() => {
     if (catcherToken && isPolling) {
       startPolling();
     }
     return () => stopPolling();
-  }, [catcherToken, isPolling]);
+  }, [catcherToken, isPolling, startPolling, stopPolling]);
 
   const generateEndpoint = async () => {
     try {
@@ -43,27 +65,6 @@ const RequestCatcher = () => {
     }
   };
 
-  const fetchLogs = async () => {
-    if (!catcherToken) return;
-    try {
-      const response = await axios.get(`${BACKEND_URL}/api/tools/catcher/logs/${catcherToken}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setLogs(response.data.logs);
-    } catch (err) {
-      console.error("Erro ao buscar logs:", err);
-    }
-  };
-
-  const startPolling = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    fetchLogs(); // Manda buscar 1x imediatamente
-    intervalRef.current = setInterval(fetchLogs, 3000); // Polling a cada 3s
-  };
-
-  const stopPolling = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  };
 
   const togglePolling = () => {
     setIsPolling(!isPolling);

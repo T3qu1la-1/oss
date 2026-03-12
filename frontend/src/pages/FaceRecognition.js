@@ -11,31 +11,31 @@ const FaceRecognition = () => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
+    const loadFaceApiModels = async () => {
+      try {
+        // Load face-api.js from CDN
+        if (!window.faceapi) {
+          await loadScript('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js');
+        }
+        
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+        
+        await Promise.all([
+          window.faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          window.faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          window.faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+          window.faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
+        ]);
+        
+        setModelsLoaded(true);
+      } catch (error) {
+        console.error('Error loading face-api models:', error);
+      }
+    };
+
     loadFaceApiModels();
   }, []);
-
-  const loadFaceApiModels = async () => {
-    try {
-      // Load face-api.js from CDN
-      if (!window.faceapi) {
-        await loadScript('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js');
-      }
-      
-      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
-      
-      await Promise.all([
-        window.faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        window.faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        window.faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-        window.faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
-      ]);
-      
-      setModelsLoaded(true);
-    } catch (error) {
-      console.error('Error loading face-api models:', error);
-    }
-  };
 
   const loadScript = (src) => {
     return new Promise((resolve, reject) => {
