@@ -1,4 +1,4 @@
-import { Scan, InsertVulnerability } from "@shared/schema";
+import type { Scan, InsertVulnerability } from "../../shared/schema";
 
 class Storage {
   async getScan(scanId: string): Promise<Scan> {

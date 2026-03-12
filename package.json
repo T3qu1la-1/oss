@@ -12,12 +12,12 @@
 
     "build": "npm run build:frontend && npm run build:scanner && npm run build:rust",
     "build:frontend": "cd frontend && npm run build",
-    "build:scanner": "npx tsc --noEmit",
+    "build:scanner": "npx tsc backend/scanner/scanner.ts --noEmit",
     "build:rust": "cd backend/rust/security-core && cargo build --release",
 
     "lint": "npm run lint:frontend && npm run lint:scanner",
     "lint:frontend": "cd frontend && npm run lint || echo \"(adicione lint no frontend se quiser)\"",
-    "lint:scanner": "npx tsc --noEmit",
+    "lint:scanner": "npx tsc backend/scanner/scanner.ts --noEmit",
 
     "test": "npm run test:python && npm run test:rust",
     "test:python": "pytest backend/tests || echo \"ajuste os testes conforme necessário\"",

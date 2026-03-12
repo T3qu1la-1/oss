@@ -18,6 +18,7 @@ class VulnerabilityScanner:
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
         # O npx deve estar disponível no PATH (Node.js instalado)
+        scanner_dir = os.path.join(root_dir, "backend", "scanner")
         command = ["npx.cmd", "tsx", "run_scanner.ts", scan_id, target]
         
         try:
@@ -27,7 +28,7 @@ class VulnerabilityScanner:
                 *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=root_dir
+                cwd=scanner_dir
             )
             
             while True:

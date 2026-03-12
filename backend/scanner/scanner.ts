@@ -1,8 +1,8 @@
 import { storage } from "./storage";
-import type { Scan, InsertVulnerability } from "@shared/schema";
+import type { Scan, InsertVulnerability } from "../../shared/schema";
 import { WebSocket } from "ws";
-import https from "https";
-import http from "http";
+import * as https from "https";
+import * as http from "http";
 
 export class VulnerabilityScanner {
   private wss: any;
