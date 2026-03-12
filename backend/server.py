@@ -69,6 +69,7 @@ class ScanCreate(BaseModel):
     name: str
     target: str
     scanType: str = "web"
+    authHeaders: Optional[Dict[str, str]] = None
 
 class Scan(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -84,6 +85,7 @@ class Scan(BaseModel):
     startedAt: Optional[datetime] = None
     completedAt: Optional[datetime] = None
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    authHeaders: Optional[Dict[str, str]] = None
 
 class Vulnerability(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -144,13 +146,25 @@ async def create_scan(scan_input: ScanCreate, background_tasks: BackgroundTasks,
     validated_target = validate_url_input(scan_input.target)
     validated_scan_type = validate_text_input(scan_input.scanType, "scan type", max_length=50)
     
+    # Sanitize authHeaders keys and values briefly if provided (keep it under limits)
+    sanitized_headers = {}
+    if scan_input.authHeaders:
+        for k, v in scan_input.authHeaders.items():
+            safe_k = validate_text_input(k, "header key", max_length=100)
+            safe_v = validate_text_input(v, "header value", max_length=2000)
+            sanitized_headers[safe_k] = safe_v
+            
+            if len(sanitized_headers) > 20: # hard limit of 20 headers injected
+                break
+
     scan = Scan(
         name=validated_name,
         target=validated_target,
         scanType=validated_scan_type,
         user_id=current_user["id"],  # Associar ao usuário autenticado
         status="pending",
-        startedAt=datetime.now(timezone.utc)
+        startedAt=datetime.now(timezone.utc),
+        authHeaders=sanitized_headers if sanitized_headers else None
     )
     
     doc = scan.model_dump()
@@ -316,6 +330,115 @@ async def get_vulnerabilities(scan_id: str, current_user: dict = Depends(get_cur
         if isinstance(vuln['createdAt'], str):
             vuln['createdAt'] = datetime.fromisoformat(vuln['createdAt'])
     return vulns
+
+from fastapi.responses import Response
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+import io
+
+@api_router.get("/scans/{scan_id}/report")
+async def generate_scan_report(scan_id: str, current_user: dict = Depends(get_current_user)):
+    """Gera um PDF executivo com o sumário de vulnerabilidades do scan"""
+    # Validar se o scan pertence ao usuário
+    scan = await db.scans.find_one({"id": scan_id, "user_id": current_user["id"]})
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+        
+    vulns = await db.vulnerabilities.find({"scan_id": scan_id}).to_list(1000)
+    
+    # Criar PDF em memória
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=18)
+    
+    styles = getSampleStyleSheet()
+    title_style = styles['Heading1']
+    title_style.alignment = 1 # Center
+    subtitle_style = styles['Heading2']
+    normal_style = styles['Normal']
+    
+    elements = []
+    
+    # Cabeçalho do Relatório
+    elements.append(Paragraph(f"Relatório de Segurança: {scan.get('name', 'Padrão')}", title_style))
+    elements.append(Spacer(1, 12))
+    
+    # Meta Informações
+    meta_data = [
+        ["Alvo:", scan.get("target", "Desconhecido")],
+        ["Tipo de Scan:", scan.get("scanType", "web").capitalize()],
+        ["Data inicio:", scan.get("startedAt", "N/D")],
+        ["Data conclusão:", scan.get("completedAt", "N/D")]
+    ]
+    t_meta = Table(meta_data, colWidths=[100, 400])
+    t_meta.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+    ]))
+    elements.append(t_meta)
+    elements.append(Spacer(1, 24))
+    
+    # Sumário Executivo
+    critical = sum(1 for v in vulns if v.get("severity", "").lower() == "critical")
+    high = sum(1 for v in vulns if v.get("severity", "").lower() == "high")
+    medium = sum(1 for v in vulns if v.get("severity", "").lower() == "medium")
+    low = sum(1 for v in vulns if v.get("severity", "").lower() == "low")
+    
+    elements.append(Paragraph("Sumário Executivo", subtitle_style))
+    summary_text = (
+        f"Foram encontradas um total de {len(vulns)} vulnerabilidades neste rastreamento. "
+        f"Abaixo está o detalhamento por nível de severidade: {critical} Críticas, {high} Altas, {medium} Médias e {low} Baixas."
+    )
+    elements.append(Paragraph(summary_text, normal_style))
+    elements.append(Spacer(1, 12))
+    
+    # Tabela Resumo
+    if vulns:
+        table_data = [["Severidade", "Vulnerabilidade", "Endpoint", "Categoria"]]
+        for v in vulns:
+            sev = str(v.get("severity", "") or "").upper()
+            title_str = str(v.get("title", "") or "")
+            end_str = str(v.get("endpoint", "") or "")
+            title = title_str[:40] + ("..." if len(title_str) > 40 else "")
+            endpoint = end_str[:35] + ("..." if len(end_str) > 35 else "")
+            cat = str(v.get("category", "") or "")
+            table_data.append([sev, title, endpoint, cat])
+            
+        t_vulns = Table(table_data, colWidths=[70, 180, 180, 100])
+        t_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1e293b")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#f8fafc")),
+            ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#cbd5e1")),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ])
+        t_vulns.setStyle(t_style)
+        elements.append(t_vulns)
+    else:
+        elements.append(Paragraph("Nenhuma vulnerabilidade foi encontrada neste scan.", normal_style))
+        
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph("Gerado por Olhos de Deus OSINT & Security", styles['Italic']))
+    
+    # Build PDF
+    doc.build(elements)
+    
+    pdf_value = buffer.getvalue()
+    buffer.close()
+    
+    return Response(content=pdf_value, headers={
+        'Content-Disposition': 'attachment; filename="report_scan.pdf"',
+        'Content-Type': 'application/pdf'
+    })
 
 @api_router.get("/stats")
 async def get_stats(current_user: dict = Depends(get_current_user)):

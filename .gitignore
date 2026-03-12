@@ -84,4 +84,15 @@ android-sdk/
 # *.env.*
 
 # Databases
-# data_rocks/
+data_rocks/
+backend/data_rocks/
+captured_creds.json
+backend/captured_creds.json
+
+# C++ and Rust builds
+backend/cpp/search-engine/build/
+backend/rust/security-core/target/
+
+# Gemnini Data
+.gemini/
+brain/

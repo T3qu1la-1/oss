@@ -1,4 +1,9 @@
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import axios from 'axios';
+import { toast } from 'sonner';
 import { API_URL } from '../config';
+
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

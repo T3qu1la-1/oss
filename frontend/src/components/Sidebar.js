@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Menu, Shield, Search, Home, Lock, Image, Compass, BookOpen, 
-  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut, Zap, Crown, RadioReceiver, ShieldAlert, FolderSearch, Network, Share2
+  FileText, Globe, Terminal, Users, Target, Database, Code, TrendingUp, Eye, LogOut, Zap, Crown, RadioReceiver, ShieldAlert, FolderSearch, Network, Share2, FileSearch
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
@@ -38,7 +38,8 @@ const Sidebar = ({ currentPage, onPageChange }) => {
     { id: 'port-scanner', name: 'Port Scanner', icon: Network, badge: 'NOVO' },
     { id: 'subdomain-mapper', name: 'Subdomain Mapper', icon: Share2, badge: 'NOVO' },
     { id: 'geokit', name: 'GeoKit', icon: Globe },
-    { id: 'reports', name: 'Relatórios', icon: FileText }
+    { id: 'phishing', name: 'Phishing', icon: ShieldAlert, badge: 'PRO' },
+    { id: 'pdf-hacking', name: 'PDF Hacking', icon: FileSearch, badge: 'NOVO' }
   ];
 
   return (

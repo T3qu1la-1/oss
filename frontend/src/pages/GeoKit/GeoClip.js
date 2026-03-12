@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Globe, MapPin, Loader } from 'lucide-react';
 import '../ToolPages.css';
+import { API_URL } from '../config';
 
 const GeoKit = () => {
   const [file, setFile] = useState(null);
@@ -8,8 +9,6 @@ const GeoKit = () => {
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];

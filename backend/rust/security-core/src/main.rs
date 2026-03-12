@@ -2,13 +2,21 @@ use std::env;
 use std::io::{self, Read};
 
 mod crypto;
-mod validation;
 mod integrity;
+mod ip_checker;
+mod jwt_validator;
+mod password_checker;
+mod threat_scan;
+mod validation;
 
 use crypto::{compute_hash, sign_message, verify_signature};
 use integrity::validate_integrity;
+use ip_checker::check_ip;
+use jwt_validator::validate_jwt;
+use password_checker::check_password;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use threat_scan::scan_threats;
 use validation::verify_payload;
 
 #[derive(Debug, Deserialize)]
@@ -23,6 +31,12 @@ struct Request {
 enum Response {
     Ok { result: Value },
     Error { code: String, message: String },
+}
+
+macro_rules! json {
+    ($($tt:tt)*) => {
+        serde_json::json!($($tt)*)
+    };
 }
 
 fn main() {
@@ -41,6 +55,7 @@ fn main() {
     };
 
     let resp = match req.action.as_str() {
+        // ── Original actions ────────────────────────────────────
         "verify_payload" => match verify_payload(&req.payload) {
             Ok(()) => Response::Ok {
                 result: json!({ "valid": true }),
@@ -135,6 +150,46 @@ fn main() {
                 message: e.to_string(),
             },
         },
+
+        // ── New actions ─────────────────────────────────────────
+        "threat_scan" => {
+            let report = scan_threats(&req.payload);
+            Response::Ok {
+                result: serde_json::to_value(report)
+                    .unwrap_or_else(|_| json!({ "threat_level": "error" })),
+            }
+        }
+        "check_ip" => match check_ip(&req.payload) {
+            Ok(report) => Response::Ok {
+                result: serde_json::to_value(report)
+                    .unwrap_or_else(|_| json!({ "valid": false })),
+            },
+            Err(e) => Response::Error {
+                code: "ip_check_error".to_string(),
+                message: e,
+            },
+        },
+        "validate_jwt" => match validate_jwt(&req.payload) {
+            Ok(report) => Response::Ok {
+                result: serde_json::to_value(report)
+                    .unwrap_or_else(|_| json!({ "valid": false })),
+            },
+            Err(e) => Response::Error {
+                code: "jwt_validation_error".to_string(),
+                message: e,
+            },
+        },
+        "check_password" => match check_password(&req.payload) {
+            Ok(report) => Response::Ok {
+                result: serde_json::to_value(report)
+                    .unwrap_or_else(|_| json!({ "score": 0 })),
+            },
+            Err(e) => Response::Error {
+                code: "password_check_error".to_string(),
+                message: e,
+            },
+        },
+
         _ => Response::Error {
             code: "unknown_action".to_string(),
             message: format!("unsupported action: {}", req.action),
@@ -156,4 +211,3 @@ fn write_error(code: &str, message: &str) {
         eprintln!(r#"{{"status":"error","code":"io_error","message":"failed to write error: {e}"}}"#);
     }
 }
-

@@ -394,6 +394,14 @@ const UsernameSearch = () => {
     { name: 'Asana', url: 'https://asana.com/{username}', category: 'Productivity' }
   ];
 
+  const chunkArray = (arr, size) => {
+    return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+      arr.slice(i * size, i * size + size)
+    );
+  };
+
+  const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+
   const handleSearch = async () => {
     if (!username.trim()) return;
     
@@ -401,28 +409,33 @@ const UsernameSearch = () => {
     setResults([]);
     setProgress(0);
 
-    const totalPlatforms = platforms.length;
+    const platformUrls = platforms.map(p => ({
+        name: p.name,
+        category: p.category,
+        url: p.url.replace('{username}', username)
+    }));
+
+    // Chunk requests into batches to avoid overwhelming the backend
+    const batches = chunkArray(platformUrls, 30);
     const searchResults = [];
 
-    for (let i = 0; i < platforms.length; i++) {
-      const platform = platforms[i];
-      const url = platform.url.replace('{username}', username);
-      
-      // Simulação realista: ~30% de chance de encontrar
-      const exists = Math.random() > 0.7;
-      
-      searchResults.push({
-        ...platform,
-        url,
-        exists,
-        checked: true
-      });
+    // Dynamically import axios to avoid breaking if it's not at the top
+    const axios = (await import('axios')).default;
 
-      setResults([...searchResults]);
-      setProgress(Math.round(((i + 1) / totalPlatforms) * 100));
-      
-      // Delay rápido para parecer real
-      await new Promise(resolve => setTimeout(resolve, 20));
+    for (let i = 0; i < batches.length; i++) {
+      try {
+        const batch = batches[i];
+        const res = await axios.post(`${API_URL}/api/tools/username-search/batch`, { 
+            username, 
+            platforms: batch 
+        });
+        
+        searchResults.push(...res.data);
+        setResults([...searchResults]);
+        setProgress(Math.round(((i + 1) / batches.length) * 100));
+      } catch (e) {
+         console.error("Batch error", e);
+      }
     }
 
     setSearching(false);

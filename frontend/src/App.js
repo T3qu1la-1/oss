@@ -9,7 +9,6 @@ import RegisterPage from './pages/RegisterPage';
 import TelegramLoginPage from './pages/TelegramLoginPage';
 import Dashboard from './pages/Dashboard';
 import PentesterPage from './pages/PentesterPage';
-import Reports from './pages/Reports';
 import OSINTPage from './pages/OSINTPage';
 import OSINTFrameworkPage from './pages/OSINTFramework';
 import BoitataTools from './pages/BoitataTools';
@@ -35,6 +34,8 @@ import PortScanner from './pages/PortScanner';
 import SubdomainMapper from './pages/SubdomainMapper';
 import AdminPanel from './pages/AdminPanel';
 import Manual from './pages/Manual';
+import PhishingGenerator from './pages/PhishingGenerator';
+import PDFHacking from './pages/PDFHacking';
 import Sidebar from './components/Sidebar';
 import './styles/global.css';
 import './App.css';
@@ -46,6 +47,11 @@ const AppContent = () => {
   // 🚫 Ativar proteção contra inspeção
   useEffect(() => {
     protection.init();
+    
+    // Registrar visita
+    try {
+      fetch('http://localhost:8000/api/admin/visits/track', { method: 'POST' }).catch(() => {});
+    } catch(e) {}
   }, []);
 
   if (loading) {
@@ -113,8 +119,6 @@ const AppContent = () => {
         return <PortScanner />;
       case 'subdomain-mapper':
         return <SubdomainMapper />;
-      case 'reports':
-        return <Reports />;
       case 'osint':
         return <OSINTPage />;
       case 'framework':
@@ -129,6 +133,10 @@ const AppContent = () => {
         return <EmojiCrypt />;
       case 'exif':
         return <ExifHunter />;
+      case 'phishing':
+        return <PhishingGenerator />;
+      case 'pdf-hacking':
+        return <PDFHacking />;
       default:
         return <Dashboard onNavigate={setCurrentPage} />;
     }

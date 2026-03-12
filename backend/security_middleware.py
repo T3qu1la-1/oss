@@ -97,8 +97,125 @@ class RustSecurityCore:
             return res.get("result", {}).get("signature")
         return None
 
+    def threat_scan(self, payload: any) -> dict:
+        """Executa deep threat scan via Rust (SQLi, XSS, CMDi, etc)"""
+        res = self._call("threat_scan", payload)
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"threat_level": "error"}
+
+    def check_ip(self, ip: str) -> dict:
+        """Verifica reputação de IP via Rust"""
+        res = self._call("check_ip", ip)
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"valid": False}
+
+    def check_password(self, password: str) -> dict:
+        """Verifica força de senha via Rust"""
+        res = self._call("check_password", password)
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"score": 0, "strength": "error"}
+
+    def validate_jwt(self, token: str, secret: str = "") -> dict:
+        """Valida JWT via Rust"""
+        res = self._call("validate_jwt", {"token": token, "secret": secret})
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"valid": False}
+
 # Instância global do Rust Core
 rust_core = RustSecurityCore()
+
+
+# ============================================================================
+# C++ SEARCH ENGINE - Motor de Busca de Alta Performance
+# ============================================================================
+
+class CppSearchEngine:
+    """Interface para o binário C++ de busca de alta performance"""
+    
+    def __init__(self):
+        self.root_dir = Path(__file__).parent.parent
+        self.bin_path = self.root_dir / "backend" / "cpp" / "search-engine" / "build" / "search-engine"
+        if os.name == 'nt':
+            self.bin_path = self.bin_path.with_suffix(".exe")
+        
+        self.enabled = self.bin_path.exists()
+        if not self.enabled:
+            # Try Release subdirectory (MSVC)
+            alt_path = self.root_dir / "backend" / "cpp" / "search-engine" / "build" / "Release" / "search-engine"
+            if os.name == 'nt':
+                alt_path = alt_path.with_suffix(".exe")
+            if alt_path.exists():
+                self.bin_path = alt_path
+                self.enabled = True
+
+    def _call(self, action: str, payload: any) -> dict:
+        """Chama o binário C++ via stdin/stdout com JSON"""
+        if not self.enabled:
+            return {"status": "error", "message": "C++ binary not found"}
+        
+        try:
+            req = json.dumps({"action": action, "payload": payload})
+            result = subprocess.run(
+                [str(self.bin_path)],
+                input=req.encode('utf-8'),
+                capture_output=True,
+                check=False,
+                timeout=30  # 30 second timeout for large searches
+            )
+            
+            if result.returncode != 0:
+                error_msg = result.stderr.decode('utf-8', errors='ignore')
+                return {"status": "error", "message": f"C++ process failed: {error_msg}"}
+            
+            return json.loads(result.stdout.decode('utf-8'))
+        except subprocess.TimeoutExpired:
+            return {"status": "error", "message": "Search timed out"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def search_text(self, pages: list, query: str, case_insensitive: bool = False) -> dict:
+        """Busca literal com Boyer-Moore-Horspool"""
+        res = self._call("search_text", {
+            "pages": pages,
+            "query": query,
+            "case_insensitive": case_insensitive
+        })
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"total_matches": 0, "results": []}
+
+    def search_regex(self, pages: list, pattern: str, case_insensitive: bool = False) -> dict:
+        """Busca por regex"""
+        res = self._call("search_regex", {
+            "pages": pages,
+            "query": pattern,
+            "case_insensitive": case_insensitive
+        })
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"total_matches": 0, "results": []}
+
+    def extract_entities(self, pages: list) -> dict:
+        """Extrai entidades (emails, IPs, URLs, phones, etc)"""
+        res = self._call("extract_entities", {"pages": pages})
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"total_entities": 0, "entities": []}
+
+    def calc_entropy(self, data: str) -> dict:
+        """Calcula entropia Shannon"""
+        res = self._call("calc_entropy", {"data": data})
+        if res.get("status") == "ok":
+            return res.get("result", {})
+        return {"shannon_entropy": 0}
+
+# Instância global do C++ Search Engine
+cpp_engine = CppSearchEngine()
+
 
 # ============================================================================
 # RATE LIMITING - Proteção contra DDoS/DoS/Botnets

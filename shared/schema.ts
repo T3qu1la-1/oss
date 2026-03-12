@@ -6,6 +6,7 @@ export interface Scan {
   progress: number;
   currentTask: string;
   completedAt?: Date;
+  authHeaders?: Record<string, string>;
 }
 
 export interface InsertVulnerability {

