@@ -19,7 +19,9 @@ class VulnerabilityScanner:
         
         # O npx deve estar disponível no PATH (Node.js instalado)
         scanner_dir = os.path.join(root_dir, "backend", "scanner")
-        command = ["npx.cmd", "tsx", "run_scanner.ts", scan_id, target]
+        
+        npx_cmd = "npx.cmd" if os.name == "nt" else "npx"
+        command = [npx_cmd, "tsx", "run_scanner.ts", scan_id, target]
         
         try:
             logger.info(f"Iniciando TypeScript Scanner engine (scanId={scan_id}, target={target})")
