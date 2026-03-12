@@ -267,7 +267,7 @@ class ToolsEndpointTester:
         print("="*50)
         
         return results
-
+        
 if __name__ == "__main__":
     tester = ToolsEndpointTester(BACKEND_URL)
     results = tester.run_all_tests()
@@ -277,3 +277,4 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         sys.exit(1)
+

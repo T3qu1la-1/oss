@@ -10,16 +10,95 @@ Proteções implementadas:
 - Security Headers
 """
 
+import asyncio
+import json
+import subprocess
+import os
 import re
 import html
 from typing import Optional
 from urllib.parse import urlparse
+from pathlib import Path
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from collections import defaultdict
 from datetime import datetime, timedelta
-import asyncio
+
+# ============================================================================
+# RUST SECURITY CORE - Integração com Sidecar em Rust
+# ============================================================================
+
+class RustSecurityCore:
+    """Interface para o binário de segurança de alta performance em Rust"""
+    
+    def __init__(self):
+        # Localização do binário compilado
+        self.root_dir = Path(__file__).parent.parent
+        self.bin_path = self.root_dir / "backend" / "rust" / "security-core" / "target" / "release" / "security-core"
+        if os.name == 'nt':
+            self.bin_path = self.bin_path.with_suffix(".exe")
+        
+        self.enabled = self.bin_path.exists()
+        if not self.enabled:
+            # Tentar no debug se não estiver no release
+            debug_path = self.root_dir / "backend" / "rust" / "security-core" / "target" / "debug" / "security-core"
+            if os.name == 'nt':
+                debug_path = debug_path.with_suffix(".exe")
+            if debug_path.exists():
+                self.bin_path = debug_path
+                self.enabled = True
+        
+        self.secret = os.getenv("SECURITY_CORE_SECRET", "default-dev-secret-change-me")
+
+    def _call(self, action: str, payload: any) -> dict:
+        """Chama o binário Rust via stdin/stdout com JSON"""
+        if not self.enabled:
+            return {"status": "error", "message": "Rust binary not found"}
+        
+        try:
+            req = json.dumps({"action": action, "payload": payload})
+            env = os.environ.copy()
+            env["SECURITY_CORE_SECRET"] = self.secret
+            
+            result = subprocess.run(
+                [str(self.bin_path)],
+                input=req.encode('utf-8'),
+                capture_output=True,
+                env=env,
+                check=False
+            )
+            
+            if result.returncode != 0:
+                error_msg = result.stderr.decode('utf-8', errors='ignore')
+                return {"status": "error", "message": f"Rust process failed: {error_msg}"}
+            
+            return json.loads(result.stdout.decode('utf-8'))
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def verify_payload(self, payload: any) -> bool:
+        """Delega validação estrutural para o Rust"""
+        if not self.enabled: return True
+        res = self._call("verify_payload", payload)
+        return res.get("status") == "ok"
+
+    def compute_hash(self, text: str) -> Optional[str]:
+        """Calcula SHA256 no Rust"""
+        res = self._call("compute_hash", text)
+        if res.get("status") == "ok":
+            return res.get("result", {}).get("hash_sha256")
+        return None
+
+    def sign(self, message: str) -> Optional[str]:
+        """Assina mensagem usando HMAC-SHA256 no Rust"""
+        res = self._call("sign_message", message)
+        if res.get("status") == "ok":
+            return res.get("result", {}).get("signature")
+        return None
+
+# Instância global do Rust Core
+rust_core = RustSecurityCore()
 
 # ============================================================================
 # RATE LIMITING - Proteção contra DDoS/DoS/Botnets
@@ -274,6 +353,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.rate_limiter = RateLimiter()
         self.validator = SecurityValidator()
+        self.rust = rust_core
         
         # Endpoints que não precisam de validação rigorosa
         self.skip_validation = ["/", "/docs", "/openapi.json", "/ws"]

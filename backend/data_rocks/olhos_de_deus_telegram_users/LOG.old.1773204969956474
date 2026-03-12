@@ -1,0 +1,304 @@
+2026/03/11-01:52:44.789164 fdc RocksDB version: 9.8.4
+2026/03/11-01:52:44.789276 fdc Compile date 2025-07-09 11:14:20
+2026/03/11-01:52:44.789301 fdc DB SUMMARY
+2026/03/11-01:52:44.789324 fdc Host name (Env):  DESKTOP-JBBI3C1
+2026/03/11-01:52:44.789337 fdc DB Session ID:  O4J83Z10ML08IPD1AH70
+2026/03/11-01:52:44.791266 fdc CURRENT file:  CURRENT
+2026/03/11-01:52:44.791298 fdc IDENTITY file:  IDENTITY
+2026/03/11-01:52:44.791425 fdc MANIFEST file:  MANIFEST-000038 size: 304 Bytes
+2026/03/11-01:52:44.791448 fdc SST files in C:\Users\home\.gemini\antigravity\scratch\OlhoDeCristo_Osint\backend\data_rocks\olhos_de_deus_telegram_users dir, Total Num: 1, files: 000016.sst 
+2026/03/11-01:52:44.791462 fdc Write Ahead Log file in C:\Users\home\.gemini\antigravity\scratch\OlhoDeCristo_Osint\backend\data_rocks\olhos_de_deus_telegram_users: 000037.log size: 335 ; 
+2026/03/11-01:52:44.791627 fdc                         Options.error_if_exists: 0
+2026/03/11-01:52:44.791640 fdc                       Options.create_if_missing: 1
+2026/03/11-01:52:44.791646 fdc                         Options.paranoid_checks: 1
+2026/03/11-01:52:44.791651 fdc             Options.flush_verify_memtable_count: 1
+2026/03/11-01:52:44.791656 fdc          Options.compaction_verify_record_count: 1
+2026/03/11-01:52:44.791660 fdc                               Options.track_and_verify_wals_in_manifest: 0
+2026/03/11-01:52:44.791664 fdc        Options.verify_sst_unique_id_in_manifest: 1
+2026/03/11-01:52:44.791668 fdc                                     Options.env: 00000144A7A4A8E0
+2026/03/11-01:52:44.791673 fdc                                      Options.fs: WinFS
+2026/03/11-01:52:44.791681 fdc                                Options.info_log: 00000144A5648A50
+2026/03/11-01:52:44.791691 fdc                Options.max_file_opening_threads: 16
+2026/03/11-01:52:44.791695 fdc                              Options.statistics: 0000000000000000
+2026/03/11-01:52:44.791699 fdc                               Options.use_fsync: 0
+2026/03/11-01:52:44.791704 fdc                       Options.max_log_file_size: 0
+2026/03/11-01:52:44.791737 fdc                  Options.max_manifest_file_size: 1073741824
+2026/03/11-01:52:44.791745 fdc                   Options.log_file_time_to_roll: 0
+2026/03/11-01:52:44.791750 fdc                       Options.keep_log_file_num: 1000
+2026/03/11-01:52:44.791755 fdc                    Options.recycle_log_file_num: 0
+2026/03/11-01:52:44.791761 fdc                         Options.allow_fallocate: 1
+2026/03/11-01:52:44.791767 fdc                        Options.allow_mmap_reads: 0
+2026/03/11-01:52:44.791773 fdc                       Options.allow_mmap_writes: 0
+2026/03/11-01:52:44.791780 fdc                        Options.use_direct_reads: 0
+2026/03/11-01:52:44.791786 fdc                        Options.use_direct_io_for_flush_and_compaction: 0
+2026/03/11-01:52:44.791793 fdc          Options.create_missing_column_families: 0
+2026/03/11-01:52:44.791799 fdc                              Options.db_log_dir: 
+2026/03/11-01:52:44.791806 fdc                                 Options.wal_dir: 
+2026/03/11-01:52:44.791812 fdc                Options.table_cache_numshardbits: 6
+2026/03/11-01:52:44.791819 fdc                         Options.WAL_ttl_seconds: 0
+2026/03/11-01:52:44.791826 fdc                       Options.WAL_size_limit_MB: 0
+2026/03/11-01:52:44.791833 fdc                        Options.max_write_batch_group_size_bytes: 1048576
+2026/03/11-01:52:44.791843 fdc             Options.manifest_preallocation_size: 4194304
+2026/03/11-01:52:44.791850 fdc                     Options.is_fd_close_on_exec: 1
+2026/03/11-01:52:44.791855 fdc                   Options.advise_random_on_open: 1
+2026/03/11-01:52:44.791859 fdc                    Options.db_write_buffer_size: 0
+2026/03/11-01:52:44.791864 fdc                    Options.write_buffer_manager: 00000144A7A4A9D0
+2026/03/11-01:52:44.791868 fdc           Options.random_access_max_buffer_size: 1048576
+2026/03/11-01:52:44.791872 fdc                      Options.use_adaptive_mutex: 0
+2026/03/11-01:52:44.791876 fdc                            Options.rate_limiter: 0000000000000000
+2026/03/11-01:52:44.791918 fdc     Options.sst_file_manager.rate_bytes_per_sec: 0
+2026/03/11-01:52:44.791926 fdc                       Options.wal_recovery_mode: 2
+2026/03/11-01:52:44.791931 fdc                  Options.enable_thread_tracking: 0
+2026/03/11-01:52:44.791935 fdc                  Options.enable_pipelined_write: 0
+2026/03/11-01:52:44.791939 fdc                  Options.unordered_write: 0
+2026/03/11-01:52:44.791943 fdc         Options.allow_concurrent_memtable_write: 1
+2026/03/11-01:52:44.791947 fdc      Options.enable_write_thread_adaptive_yield: 1
+2026/03/11-01:52:44.791951 fdc             Options.write_thread_max_yield_usec: 100
+2026/03/11-01:52:44.791955 fdc            Options.write_thread_slow_yield_usec: 3
+2026/03/11-01:52:44.791959 fdc                               Options.row_cache: None
+2026/03/11-01:52:44.791964 fdc                              Options.wal_filter: None
+2026/03/11-01:52:44.791970 fdc             Options.avoid_flush_during_recovery: 0
+2026/03/11-01:52:44.791975 fdc             Options.allow_ingest_behind: 0
+2026/03/11-01:52:44.791979 fdc             Options.two_write_queues: 0
+2026/03/11-01:52:44.791984 fdc             Options.manual_wal_flush: 0
+2026/03/11-01:52:44.791988 fdc             Options.wal_compression: 0
+2026/03/11-01:52:44.791992 fdc             Options.background_close_inactive_wals: 0
+2026/03/11-01:52:44.791997 fdc             Options.atomic_flush: 0
+2026/03/11-01:52:44.792001 fdc             Options.avoid_unnecessary_blocking_io: 0
+2026/03/11-01:52:44.792006 fdc             Options.prefix_seek_opt_in_only: 0
+2026/03/11-01:52:44.792010 fdc                 Options.persist_stats_to_disk: 0
+2026/03/11-01:52:44.792014 fdc                 Options.write_dbid_to_manifest: 1
+2026/03/11-01:52:44.792018 fdc                 Options.write_identity_file: 1
+2026/03/11-01:52:44.792022 fdc                 Options.log_readahead_size: 0
+2026/03/11-01:52:44.792026 fdc                 Options.file_checksum_gen_factory: Unknown
+2026/03/11-01:52:44.792030 fdc                 Options.best_efforts_recovery: 0
+2026/03/11-01:52:44.792035 fdc                Options.max_bgerror_resume_count: 2147483647
+2026/03/11-01:52:44.792039 fdc            Options.bgerror_resume_retry_interval: 1000000
+2026/03/11-01:52:44.792043 fdc             Options.allow_data_in_errors: 0
+2026/03/11-01:52:44.792047 fdc             Options.db_host_id: __hostname__
+2026/03/11-01:52:44.792051 fdc             Options.enforce_single_del_contracts: true
+2026/03/11-01:52:44.792056 fdc             Options.metadata_write_temperature: kUnknown
+2026/03/11-01:52:44.792061 fdc             Options.wal_write_temperature: kUnknown
+2026/03/11-01:52:44.792065 fdc             Options.max_background_jobs: 2
+2026/03/11-01:52:44.792069 fdc             Options.max_background_compactions: -1
+2026/03/11-01:52:44.792074 fdc             Options.max_subcompactions: 1
+2026/03/11-01:52:44.792078 fdc             Options.avoid_flush_during_shutdown: 0
+2026/03/11-01:52:44.792085 fdc           Options.writable_file_max_buffer_size: 1048576
+2026/03/11-01:52:44.792089 fdc             Options.delayed_write_rate : 16777216
+2026/03/11-01:52:44.792093 fdc             Options.max_total_wal_size: 0
+2026/03/11-01:52:44.792097 fdc             Options.delete_obsolete_files_period_micros: 21600000000
+2026/03/11-01:52:44.792102 fdc                   Options.stats_dump_period_sec: 600
+2026/03/11-01:52:44.792106 fdc                 Options.stats_persist_period_sec: 600
+2026/03/11-01:52:44.792111 fdc                 Options.stats_history_buffer_size: 1048576
+2026/03/11-01:52:44.792116 fdc                          Options.max_open_files: -1
+2026/03/11-01:52:44.792121 fdc                          Options.bytes_per_sync: 0
+2026/03/11-01:52:44.792125 fdc                      Options.wal_bytes_per_sync: 0
+2026/03/11-01:52:44.792129 fdc                   Options.strict_bytes_per_sync: 0
+2026/03/11-01:52:44.792134 fdc       Options.compaction_readahead_size: 2097152
+2026/03/11-01:52:44.792138 fdc                  Options.max_background_flushes: -1
+2026/03/11-01:52:44.792170 fdc Options.daily_offpeak_time_utc: 
+2026/03/11-01:52:44.792177 fdc Compression algorithms supported:
+2026/03/11-01:52:44.792182 fdc 	kZSTD supported: 1
+2026/03/11-01:52:44.792186 fdc 	kSnappyCompression supported: 1
+2026/03/11-01:52:44.792191 fdc 	kBZip2Compression supported: 1
+2026/03/11-01:52:44.792196 fdc 	kZlibCompression supported: 1
+2026/03/11-01:52:44.792201 fdc 	kLZ4Compression supported: 1
+2026/03/11-01:52:44.792205 fdc 	kXpressCompression supported: 0
+2026/03/11-01:52:44.792209 fdc 	kLZ4HCCompression supported: 1
+2026/03/11-01:52:44.792214 fdc 	kZSTDNotFinalCompression supported: 1
+2026/03/11-01:52:44.792220 fdc Fast CRC32 supported: Not supported on x86
+2026/03/11-01:52:44.792245 fdc DMutex implementation: std::mutex
+2026/03/11-01:52:44.792275 fdc Jemalloc supported: 0
+2026/03/11-01:52:44.802747 fdc [db/version_set.cc:6066] Recovering from manifest file: C:\Users\home\.gemini\antigravity\scratch\OlhoDeCristo_Osint\backend\data_rocks\olhos_de_deus_telegram_users/MANIFEST-000038
+2026/03/11-01:52:44.813428 fdc [db/column_family.cc:629] --------------- Options for column family [default]:
+2026/03/11-01:52:44.813458 fdc               Options.comparator: rocksdict
+2026/03/11-01:52:44.813467 fdc           Options.merge_operator: None
+2026/03/11-01:52:44.813474 fdc        Options.compaction_filter: None
+2026/03/11-01:52:44.813480 fdc        Options.compaction_filter_factory: None
+2026/03/11-01:52:44.813486 fdc  Options.sst_partitioner_factory: None
+2026/03/11-01:52:44.813492 fdc         Options.memtable_factory: SkipListFactory
+2026/03/11-01:52:44.813499 fdc            Options.table_factory: BlockBasedTable
+2026/03/11-01:52:44.813546 fdc            table_factory options:   flush_block_policy_factory: FlushBlockBySizePolicyFactory (00000144A7C3B270)
+  cache_index_and_filter_blocks: 0
+  cache_index_and_filter_blocks_with_high_priority: 1
+  pin_l0_filter_and_index_blocks_in_cache: 0
+  pin_top_level_index_and_filter: 1
+  index_type: 0
+  data_block_index_type: 0
+  index_shortening: 1
+  data_block_hash_table_util_ratio: 0.750000
+  checksum: 4
+  no_block_cache: 0
+  block_cache: 00000144A7A0DFE0
+  block_cache_name: LRUCache
+  block_cache_options:
+    capacity : 8388608
+    num_shard_bits : 4
+    strict_capacity_limit : 0
+    memory_allocator : None
+    high_pri_pool_ratio: 0.500
+    low_pri_pool_ratio: 0.000
+  persistent_cache: 0000000000000000
+  block_size: 4096
+  block_size_deviation: 10
+  block_restart_interval: 16
+  index_block_restart_interval: 1
+  metadata_block_size: 4096
+  partition_filters: 0
+  use_delta_encoding: 1
+  filter_policy: nullptr
+  whole_key_filtering: 1
+  verify_compression: 0
+  read_amp_bytes_per_bit: 0
+  format_version: 6
+  enable_index_compression: 1
+  block_align: 0
+  max_auto_readahead_size: 262144
+  prepopulate_block_cache: 0
+  initial_auto_readahead_size: 8192
+  num_file_reads_for_auto_readahead: 2
+2026/03/11-01:52:44.813555 fdc        Options.write_buffer_size: 67108864
+2026/03/11-01:52:44.813562 fdc  Options.max_write_buffer_number: 2
+2026/03/11-01:52:44.813571 fdc          Options.compression: Snappy
+2026/03/11-01:52:44.813578 fdc                  Options.bottommost_compression: Disabled
+2026/03/11-01:52:44.813585 fdc       Options.prefix_extractor: nullptr
+2026/03/11-01:52:44.813591 fdc   Options.memtable_insert_with_hint_prefix_extractor: nullptr
+2026/03/11-01:52:44.813598 fdc             Options.num_levels: 7
+2026/03/11-01:52:44.813604 fdc        Options.min_write_buffer_number_to_merge: 1
+2026/03/11-01:52:44.813611 fdc     Options.max_write_buffer_number_to_maintain: 0
+2026/03/11-01:52:44.813617 fdc     Options.max_write_buffer_size_to_maintain: 0
+2026/03/11-01:52:44.813623 fdc            Options.bottommost_compression_opts.window_bits: -14
+2026/03/11-01:52:44.813630 fdc                  Options.bottommost_compression_opts.level: 32767
+2026/03/11-01:52:44.813636 fdc               Options.bottommost_compression_opts.strategy: 0
+2026/03/11-01:52:44.813643 fdc         Options.bottommost_compression_opts.max_dict_bytes: 0
+2026/03/11-01:52:44.813649 fdc         Options.bottommost_compression_opts.zstd_max_train_bytes: 0
+2026/03/11-01:52:44.813661 fdc         Options.bottommost_compression_opts.parallel_threads: 1
+2026/03/11-01:52:44.813670 fdc                  Options.bottommost_compression_opts.enabled: false
+2026/03/11-01:52:44.813677 fdc         Options.bottommost_compression_opts.max_dict_buffer_bytes: 0
+2026/03/11-01:52:44.813684 fdc         Options.bottommost_compression_opts.use_zstd_dict_trainer: true
+2026/03/11-01:52:44.813691 fdc            Options.compression_opts.window_bits: -14
+2026/03/11-01:52:44.813698 fdc                  Options.compression_opts.level: 32767
+2026/03/11-01:52:44.813704 fdc               Options.compression_opts.strategy: 0
+2026/03/11-01:52:44.813711 fdc         Options.compression_opts.max_dict_bytes: 0
+2026/03/11-01:52:44.813717 fdc         Options.compression_opts.zstd_max_train_bytes: 0
+2026/03/11-01:52:44.813723 fdc         Options.compression_opts.use_zstd_dict_trainer: true
+2026/03/11-01:52:44.813729 fdc         Options.compression_opts.parallel_threads: 1
+2026/03/11-01:52:44.813735 fdc                  Options.compression_opts.enabled: false
+2026/03/11-01:52:44.813741 fdc         Options.compression_opts.max_dict_buffer_bytes: 0
+2026/03/11-01:52:44.813748 fdc      Options.level0_file_num_compaction_trigger: 4
+2026/03/11-01:52:44.813755 fdc          Options.level0_slowdown_writes_trigger: 20
+2026/03/11-01:52:44.813762 fdc              Options.level0_stop_writes_trigger: 36
+2026/03/11-01:52:44.813769 fdc                   Options.target_file_size_base: 67108864
+2026/03/11-01:52:44.813776 fdc             Options.target_file_size_multiplier: 1
+2026/03/11-01:52:44.813783 fdc                Options.max_bytes_for_level_base: 268435456
+2026/03/11-01:52:44.813790 fdc Options.level_compaction_dynamic_level_bytes: 1
+2026/03/11-01:52:44.813797 fdc          Options.max_bytes_for_level_multiplier: 10.000000
+2026/03/11-01:52:44.813806 fdc Options.max_bytes_for_level_multiplier_addtl[0]: 1
+2026/03/11-01:52:44.813813 fdc Options.max_bytes_for_level_multiplier_addtl[1]: 1
+2026/03/11-01:52:44.813820 fdc Options.max_bytes_for_level_multiplier_addtl[2]: 1
+2026/03/11-01:52:44.813827 fdc Options.max_bytes_for_level_multiplier_addtl[3]: 1
+2026/03/11-01:52:44.813834 fdc Options.max_bytes_for_level_multiplier_addtl[4]: 1
+2026/03/11-01:52:44.813840 fdc Options.max_bytes_for_level_multiplier_addtl[5]: 1
+2026/03/11-01:52:44.813847 fdc Options.max_bytes_for_level_multiplier_addtl[6]: 1
+2026/03/11-01:52:44.813853 fdc       Options.max_sequential_skip_in_iterations: 8
+2026/03/11-01:52:44.813860 fdc                    Options.max_compaction_bytes: 1677721600
+2026/03/11-01:52:44.813865 fdc                        Options.arena_block_size: 1048576
+2026/03/11-01:52:44.813872 fdc   Options.soft_pending_compaction_bytes_limit: 68719476736
+2026/03/11-01:52:44.813889 fdc   Options.hard_pending_compaction_bytes_limit: 274877906944
+2026/03/11-01:52:44.813895 fdc                Options.disable_auto_compactions: 0
+2026/03/11-01:52:44.813907 fdc                        Options.compaction_style: kCompactionStyleLevel
+2026/03/11-01:52:44.813915 fdc                          Options.compaction_pri: kMinOverlappingRatio
+2026/03/11-01:52:44.813922 fdc Options.compaction_options_universal.size_ratio: 1
+2026/03/11-01:52:44.813928 fdc Options.compaction_options_universal.min_merge_width: 2
+2026/03/11-01:52:44.813932 fdc Options.compaction_options_universal.max_merge_width: 4294967295
+2026/03/11-01:52:44.813937 fdc Options.compaction_options_universal.max_size_amplification_percent: 200
+2026/03/11-01:52:44.813941 fdc Options.compaction_options_universal.compression_size_percent: -1
+2026/03/11-01:52:44.813946 fdc Options.compaction_options_universal.stop_style: kCompactionStopStyleTotalSize
+2026/03/11-01:52:44.813950 fdc Options.compaction_options_universal.max_read_amp: -1
+2026/03/11-01:52:44.813954 fdc Options.compaction_options_fifo.max_table_files_size: 1073741824
+2026/03/11-01:52:44.813958 fdc Options.compaction_options_fifo.allow_compaction: 0
+2026/03/11-01:52:44.813964 fdc                   Options.table_properties_collectors: 
+2026/03/11-01:52:44.814020 fdc                   Options.inplace_update_support: 0
+2026/03/11-01:52:44.814027 fdc                 Options.inplace_update_num_locks: 10000
+2026/03/11-01:52:44.814032 fdc               Options.memtable_prefix_bloom_size_ratio: 0.000000
+2026/03/11-01:52:44.814037 fdc               Options.memtable_whole_key_filtering: 0
+2026/03/11-01:52:44.814041 fdc   Options.memtable_huge_page_size: 0
+2026/03/11-01:52:44.814045 fdc                           Options.bloom_locality: 0
+2026/03/11-01:52:44.814049 fdc                    Options.max_successive_merges: 0
+2026/03/11-01:52:44.814054 fdc             Options.strict_max_successive_merges: 0
+2026/03/11-01:52:44.814058 fdc                Options.optimize_filters_for_hits: 0
+2026/03/11-01:52:44.814062 fdc                Options.paranoid_file_checks: 0
+2026/03/11-01:52:44.814066 fdc                Options.force_consistency_checks: 1
+2026/03/11-01:52:44.814070 fdc                Options.report_bg_io_stats: 0
+2026/03/11-01:52:44.814074 fdc                               Options.ttl: 2592000
+2026/03/11-01:52:44.814078 fdc          Options.periodic_compaction_seconds: 0
+2026/03/11-01:52:44.814082 fdc                        Options.default_temperature: kUnknown
+2026/03/11-01:52:44.814087 fdc  Options.preclude_last_level_data_seconds: 0
+2026/03/11-01:52:44.814091 fdc    Options.preserve_internal_time_seconds: 0
+2026/03/11-01:52:44.814095 fdc                       Options.enable_blob_files: false
+2026/03/11-01:52:44.814099 fdc                           Options.min_blob_size: 0
+2026/03/11-01:52:44.814103 fdc                          Options.blob_file_size: 268435456
+2026/03/11-01:52:44.814107 fdc                   Options.blob_compression_type: NoCompression
+2026/03/11-01:52:44.814111 fdc          Options.enable_blob_garbage_collection: false
+2026/03/11-01:52:44.814116 fdc      Options.blob_garbage_collection_age_cutoff: 0.250000
+2026/03/11-01:52:44.814121 fdc Options.blob_garbage_collection_force_threshold: 1.000000
+2026/03/11-01:52:44.814126 fdc          Options.blob_compaction_readahead_size: 0
+2026/03/11-01:52:44.814130 fdc                Options.blob_file_starting_level: 0
+2026/03/11-01:52:44.814134 fdc         Options.experimental_mempurge_threshold: 0.000000
+2026/03/11-01:52:44.814138 fdc            Options.memtable_max_range_deletions: 0
+2026/03/11-01:52:44.831567 fdc [db/version_set.cc:6124] Recovered from manifest file:C:\Users\home\.gemini\antigravity\scratch\OlhoDeCristo_Osint\backend\data_rocks\olhos_de_deus_telegram_users/MANIFEST-000038 succeeded,manifest_file_number is 38, next_file_number is 40, last_sequence is 4, log_number is 34,prev_log_number is 0,max_column_family is 0,min_log_number_to_keep is 34
+2026/03/11-01:52:44.831591 fdc [db/version_set.cc:6133] Column family [default] (ID 0), log number is 34
+2026/03/11-01:52:44.832148 fdc [db/db_impl/db_impl_open.cc:685] DB ID: b6e7ed0f-1cd2-11f1-9937-5ccd5b514d83
+2026/03/11-01:52:44.835414 fdc EVENT_LOG_v1 {"time_micros": 1773204764835342, "job": 1, "event": "recovery_started", "wal_files": [37]}
+2026/03/11-01:52:44.835434 fdc [db/db_impl/db_impl_open.cc:1188] Recovering log #37 mode 2
+2026/03/11-01:52:44.855227 fdc EVENT_LOG_v1 {"time_micros": 1773204764855114, "cf_name": "default", "job": 1, "event": "table_file_creation", "file_number": 41, "file_size": 1316, "file_checksum": "", "file_checksum_func_name": "Unknown", "smallest_seqno": 5, "largest_seqno": 5, "table_properties": {"data_size": 273, "index_size": 55, "index_partitions": 0, "top_level_index_size": 0, "index_key_is_user_key": 1, "index_value_is_delta_encoded": 1, "filter_size": 0, "raw_key_size": 45, "raw_average_key_size": 45, "raw_value_size": 275, "raw_average_value_size": 275, "num_data_blocks": 1, "num_entries": 1, "num_filter_entries": 0, "num_deletions": 0, "num_merge_operands": 0, "num_range_deletions": 0, "format_version": 6, "fixed_key_len": 0, "filter_policy": "", "column_family_name": "default", "column_family_id": 0, "comparator": "rocksdict", "user_defined_timestamps_persisted": 1, "key_largest_seqno": 5, "merge_operator": "nullptr", "prefix_extractor_name": "nullptr", "property_collectors": "[]", "compression": "Snappy", "compression_options": "window_bits=-14; level=32767; strategy=0; max_dict_bytes=0; zstd_max_train_bytes=0; enabled=0; max_dict_buffer_bytes=0; use_zstd_dict_trainer=1; ", "creation_time": 1773204764, "oldest_key_time": 0, "file_creation_time": 0, "slow_compression_estimated_data_size": 0, "fast_compression_estimated_data_size": 0, "db_id": "b6e7ed0f-1cd2-11f1-9937-5ccd5b514d83", "db_session_id": "O4J83Z10ML08IPD1AH70", "orig_file_number": 41, "seqno_to_time_mapping": "N/A"}}
+2026/03/11-01:52:44.856678 fdc EVENT_LOG_v1 {"time_micros": 1773204764856671, "job": 1, "event": "recovery_finished"}
+2026/03/11-01:52:44.857196 fdc [db/version_set.cc:5554] Creating manifest 43
+2026/03/11-01:52:44.870913 fdc [db/db_impl/db_impl_open.cc:2250] SstFileManager instance 00000144A55C90B0
+2026/03/11-01:52:44.877311 fdc [file/delete_scheduler.cc:78] Deleted file C:\Users\home\.gemini\antigravity\scratch\OlhoDeCristo_Osint\backend\data_rocks\olhos_de_deus_telegram_users/000037.log immediately, rate_bytes_per_sec 0, total_trash_size 0, total_size 2785, max_trash_db_ratio 0.250000
+2026/03/11-01:52:44.877786 fdc DB pointer 00000144A7A2F940
+2026/03/11-01:52:44.880600 44c0 [db/db_impl/db_impl.cc:1201] ------- DUMPING STATS -------
+2026/03/11-01:52:44.880643 44c0 [db/db_impl/db_impl.cc:1202] 
+** DB Stats **
+Uptime(secs): 0.1 total, 0.1 interval
+Cumulative writes: 0 writes, 0 keys, 0 commit groups, 0.0 writes per commit group, ingest: 0.00 GB, 0.00 MB/s
+Cumulative WAL: 0 writes, 0 syncs, 0.00 writes per sync, written: 0.00 GB, 0.00 MB/s
+Cumulative stall: 00:00:0.000 H:M:S, 0.0 percent
+Interval writes: 0 writes, 0 keys, 0 commit groups, 0.0 writes per commit group, ingest: 0.00 MB, 0.00 MB/s
+Interval WAL: 0 writes, 0 syncs, 0.00 writes per sync, written: 0.00 GB, 0.00 MB/s
+Interval stall: 00:00:0.000 H:M:S, 0.0 percent
+Write Stall (count): write-buffer-manager-limit-stops: 0
+
+** Compaction Stats [default] **
+Level    Files   Size     Score Read(GB)  Rn(GB) Rnp1(GB) Write(GB) Wnew(GB) Moved(GB) W-Amp Rd(MB/s) Wr(MB/s) Comp(sec) CompMergeCPU(sec) Comp(cnt) Avg(sec) KeyIn KeyDrop Rblob(GB) Wblob(GB)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  L0      2/0    2.72 KB   0.5      0.0     0.0      0.0       0.0      0.0       0.0   1.0      0.0      0.1      0.01              0.00         1    0.012       0      0       0.0       0.0
+ Sum      2/0    2.72 KB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   1.0      0.0      0.1      0.01              0.00         1    0.012       0      0       0.0       0.0
+ Int      0/0    0.00 KB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   1.0      0.0      0.1      0.01              0.00         1    0.012       0      0       0.0       0.0
+
+** Compaction Stats [default] **
+Priority    Files   Size     Score Read(GB)  Rn(GB) Rnp1(GB) Write(GB) Wnew(GB) Moved(GB) W-Amp Rd(MB/s) Wr(MB/s) Comp(sec) CompMergeCPU(sec) Comp(cnt) Avg(sec) KeyIn KeyDrop Rblob(GB) Wblob(GB)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+User      0/0    0.00 KB   0.0      0.0     0.0      0.0       0.0      0.0       0.0   0.0      0.0      0.1      0.01              0.00         1    0.012       0      0       0.0       0.0
+
+Blob file count: 0, total size: 0.0 GB, garbage size: 0.0 GB, space amp: 0.0
+
+Uptime(secs): 0.1 total, 0.1 interval
+Flush(GB): cumulative 0.000, interval 0.000
+AddFile(GB): cumulative 0.000, interval 0.000
+AddFile(Total Files): cumulative 0, interval 0
+AddFile(L0 Files): cumulative 0, interval 0
+AddFile(Keys): cumulative 0, interval 0
+Cumulative compaction: 0.00 GB write, 0.02 MB/s write, 0.00 GB read, 0.00 MB/s read, 0.0 seconds
+Interval compaction: 0.00 GB write, 0.02 MB/s write, 0.00 GB read, 0.00 MB/s read, 0.0 seconds
+Estimated pending compaction bytes: 0
+Write Stall (count): cf-l0-file-count-limit-delays-with-ongoing-compaction: 0, cf-l0-file-count-limit-stops-with-ongoing-compaction: 0, l0-file-count-limit-delays: 0, l0-file-count-limit-stops: 0, memtable-limit-delays: 0, memtable-limit-stops: 0, pending-compaction-bytes-delays: 0, pending-compaction-bytes-stops: 0, total-delays: 0, total-stops: 0
+Block cache LRUCache@00000144A7A0DFE0#1856 capacity: 8.00 MB seed: 1500647353 usage: 0.08 KB table_size: 256 occupancy: 1 collections: 1 last_copies: 0 last_secs: 0.000194 secs_since: 0
+Block cache entry stats(count,size,portion): Misc(1,0.00 KB,0%)
+
+** File Read Latency Histogram By Level [default] **
+2026/03/11-01:52:45.642772 fdc [db/db_impl/db_impl_compaction_flush.cc:1970] [default] Manual flush start.
+2026/03/11-01:52:45.643418 fdc [db/db_impl/db_impl_compaction_flush.cc:1981] [default] Manual flush finished, status: OK
+2026/03/11-01:52:45.643617 fdc [db/db_impl/db_impl.cc:500] Shutdown: canceling all background work
+2026/03/11-01:52:45.644393 fdc [db/db_impl/db_impl.cc:500] Shutdown: canceling all background work
+2026/03/11-01:52:45.649481 fdc [db/db_impl/db_impl.cc:709] Shutdown complete

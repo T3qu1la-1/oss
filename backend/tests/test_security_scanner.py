@@ -10,19 +10,41 @@ import time
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8000').rstrip('/')
 
 import uuid
+import requests
+
 TOKEN = None
 HEADERS = {}
 
 def get_auth_headers():
     global TOKEN, HEADERS
     if HEADERS: return HEADERS
-    username = f"test_{uuid.uuid4().hex[:8]}"
+    
+    unique_id = uuid.uuid4().hex[:8]
+    username = f"testuser_{unique_id}"
+    email = f"test_{unique_id}@example.com"
     pwd = "TestPassword123!"
-    requests.post(f"{BASE_URL}/api/auth/register", json={"username": username, "password": pwd, "role": "admin"})
-    resp = requests.post(f"{BASE_URL}/api/auth/login", data={"username": username, "password": pwd})
+    
+    # Register
+    reg_payload = {
+        "username": username,
+        "email": email,
+        "password": pwd
+    }
+    requests.post(f"{BASE_URL}/api/auth/register", json=reg_payload)
+    
+    # Login
+    login_payload = {
+        "email": email,
+        "password": pwd
+    }
+    resp = requests.post(f"{BASE_URL}/api/auth/login", json=login_payload)
+    
     if resp.status_code == 200:
         TOKEN = resp.json().get("access_token")
         HEADERS = {"Authorization": f"Bearer {TOKEN}"}
+    else:
+        print(f"Auth failed: {resp.status_code} - {resp.text}")
+        
     return HEADERS
 
 class TestHealthAndRoot:

@@ -1,35 +1,34 @@
 <?php
 /**
  * Olho de Cristo - PHP Security Layer
- * Proteções complementares ao Lua Anti-DDoS:
+ * Camada complementar ao Lua Anti-DDoS:
  * - Rate Limiting por IP (sessão PHP)
  * - Detecção de Bad Bots
- * - Headers de Segurança (XSS, Clickjacking, Content-Type)
- * - Validação de Input (SQLi, XSS patterns)
- * - Proteção CSRF
- * 
- * Lua cuida do DDoS Layer 7 (JS challenge, cookie validation)
- * PHP cuida de: rate limiting, input validation, headers, bad bots
+ * - Headers de Segurança
+ * - Validação de Input (regex + Rust)
+ * - Proteção básica de método
  */
 
 session_start();
 
 // ==========================================
-// CONFIGURAÇÃO INTELIGENTE
+// CONFIGURAÇÃO
 // ==========================================
-$MAX_REQUESTS_PER_MINUTE = 150; // Aumentado para tolerar multi-requisições React (Pentester Tools)
-$BLOCK_DURATION_SECONDS = 60;   // Punir abuso por apenas 60 segundos p/ não travar usuários reais por muito tempo
+$MAX_REQUESTS_PER_MINUTE = 150;
+$BLOCK_DURATION_SECONDS = 60;
 $WHITELIST_IPS = ['127.0.0.1', '::1'];
+$SECURITY_CORE_BIN = __DIR__ . '/../backend/rust/security-core/target/release/security-core';
+
 // HEADERS DE SEGURANÇA
-// ==========================================
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-header('Content-Security-Policy: default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data:;');
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
 header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Content-Type: application/json; charset=utf-8');
 
 // ==========================================
 // FUNÇÕES AUXILIARES
@@ -45,6 +44,13 @@ function get_client_ip() {
         }
     }
     return 'UNKNOWN';
+}
+
+function log_security_event($type, $ip, $details = '') {
+    $log = date('Y-m-d H:i:s') . " [$type] IP: $ip - $details\n";
+    error_log($log);
+    $logfile = __DIR__ . '/security.log';
+    file_put_contents($logfile, $log, FILE_APPEND | LOCK_EX);
 }
 
 function detect_sqli($input) {
@@ -81,11 +87,50 @@ function detect_xss($input) {
     return false;
 }
 
-function log_security_event($type, $ip, $details = '') {
-    $log = date('Y-m-d H:i:s') . " [$type] IP: $ip - $details\n";
-    error_log($log);
-    $logfile = __DIR__ . '/security.log';
-    file_put_contents($logfile, $log, FILE_APPEND | LOCK_EX);
+/**
+ * Chama o binário Rust security-core de forma segura.
+ */
+function call_security_core(array $request, $binPath) {
+    if (!is_executable($binPath)) {
+        return null;
+    }
+
+    $desc = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ];
+
+    $proc = @proc_open($binPath, $desc, $pipes, null, [
+        'SECURITY_CORE_SECRET' => getenv('SECURITY_CORE_SECRET') ?: ''
+    ]);
+
+    if (!is_resource($proc)) {
+        return null;
+    }
+
+    fwrite($pipes[0], json_encode($request));
+    fclose($pipes[0]);
+
+    $stdout = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+
+    $status = proc_close($proc);
+
+    if ($status !== 0) {
+        log_security_event('RUST_ERROR', get_client_ip(), trim($stderr));
+        return null;
+    }
+
+    $data = json_decode($stdout, true);
+    if (!is_array($data)) {
+        return null;
+    }
+
+    return $data;
 }
 
 $ip = get_client_ip();
@@ -155,7 +200,6 @@ if (!isset($_GET['test_agent'])) {
     }
 }
 
-// Empty User-Agent
 if (empty($ua)) {
     http_response_code(403);
     log_security_event('NO_UA', $ip, "Empty User-Agent");
@@ -164,7 +208,7 @@ if (empty($ua)) {
 }
 
 // ==========================================
-// 4. INPUT VALIDATION (SQLi + XSS)
+// 4. INPUT VALIDATION (regex + Rust)
 // ==========================================
 $all_input = array_merge($_GET, $_POST);
 foreach ($all_input as $key => $val) {
@@ -182,6 +226,24 @@ foreach ($all_input as $key => $val) {
             exit;
         }
     }
+}
+
+// Camada adicional: enviar snapshot de input para o Rust (se disponível)
+$rust_payload = [
+    'ip' => $ip,
+    'user_agent' => $ua,
+    'params' => $all_input,
+];
+$rust_result = call_security_core([
+    'action' => 'verify_payload',
+    'payload' => $rust_payload,
+], $SECURITY_CORE_BIN);
+
+if (is_array($rust_result) && isset($rust_result['status']) && $rust_result['status'] === 'error') {
+    http_response_code(400);
+    log_security_event('RUST_VALIDATION_FAIL', $ip, $rust_result['code'] . ':' . $rust_result['message']);
+    echo json_encode(["error" => "Bad Request", "message" => "Payload rejected by security core."]);
+    exit;
 }
 
 // ==========================================
@@ -203,6 +265,6 @@ echo json_encode([
     "status" => "success",
     "message" => "All security checks passed.",
     "ip" => $ip,
-    "checks" => ["rate_limit", "bad_bot", "sqli", "xss", "headers", "method"]
+    "checks" => ["rate_limit", "bad_bot", "sqli", "xss", "rust_verify", "headers", "method"]
 ]);
 ?>

@@ -80,8 +80,8 @@ agenthub/agents/youtube/db
 android-sdk/
 
 # Environment files
-*.env
-*.env.*
+# *.env
+# *.env.*
 
 # Databases
-data_rocks/
+# data_rocks/

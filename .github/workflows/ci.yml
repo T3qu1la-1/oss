@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            frontend/node_modules
+            node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json', 'frontend/package-lock.json') }}
+
+      - name: Install JS deps
+        run: |
+          npm install
+          cd frontend && npm install
+
+      - name: Install Python deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Build Rust security-core
+        run: |
+          cd backend/rust/security-core
+          cargo build --release
+
+      - name: Lint & typecheck
+        run: npm run lint
+
+      - name: Run tests
+        env:
+          REACT_APP_BACKEND_URL: http://localhost:8000
+        run: npm run test
+
+      - name: Build front + scanner
+        run: npm run build
+

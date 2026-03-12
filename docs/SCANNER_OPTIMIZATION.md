@@ -34,3 +34,4 @@ async def make_request(self, url: str, method: str = "GET", headers: Dict = None
                 }
     except Exception:
         return {"status_code": 0, "headers": {}, "body": "", "url": url}
+

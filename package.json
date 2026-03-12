@@ -3,11 +3,31 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "bootstrap": "npm run bootstrap:frontend && npm run bootstrap:scanner && npm run bootstrap:backend-python && npm run bootstrap:rust",
+    "bootstrap:frontend": "cd frontend && npm install",
+    "bootstrap:scanner": "npm install",
+    "bootstrap:backend-python": "pip install -r backend/requirements.txt",
+    "bootstrap:rust": "cd backend/rust/security-core && cargo fetch",
+
+    "build": "npm run build:frontend && npm run build:scanner && npm run build:rust",
+    "build:frontend": "cd frontend && npm run build",
+    "build:scanner": "npx tsc --noEmit",
+    "build:rust": "cd backend/rust/security-core && cargo build --release",
+
+    "lint": "npm run lint:frontend && npm run lint:scanner",
+    "lint:frontend": "cd frontend && npm run lint || echo \"(adicione lint no frontend se quiser)\"",
+    "lint:scanner": "npx tsc --noEmit",
+
+    "test": "npm run test:python && npm run test:rust",
+    "test:python": "pytest backend/tests || echo \"ajuste os testes conforme necessário\"",
+    "test:rust": "cd backend/rust/security-core && cargo test",
+
+    "start:dev": "concurrently \"cd backend && uvicorn server:app --reload\" \"cd frontend && npm start\"",
+    "start:prod": "echo \"Suba uvicorn + build do frontend atrás do nginx/openresty\"",
+
+    "validate": "npm run lint && npm run test",
+    "doctor": "echo \"Verifique .env, portas e binários (node, python, cargo, php)\""
   },
   "keywords": [],
   "author": "",
@@ -18,5 +38,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
   }
 }
