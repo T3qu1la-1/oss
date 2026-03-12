@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "public": true,
+  "name": "olhodecristo_osint",
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "build" }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://seu-backend-real.com/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "frontend/$1"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/landing",
+      "permanent": false
+    }
+  ]
+}

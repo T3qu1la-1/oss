@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import './ToolPages.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+import { API_URL } from '../config';
 
 const AdminPanel = () => {
   const { user } = useAuth();
@@ -29,10 +29,10 @@ const AdminPanel = () => {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [usersRes, statsRes, botRes, ddosRes] = await Promise.allSettled([
-        axios.get(`${BACKEND_URL}/api/admin/users`, { headers }),
-        axios.get(`${BACKEND_URL}/api/admin/stats`, { headers }),
-        axios.get(`${BACKEND_URL}/api/admin/telegram/status`, { headers }),
-        axios.get(`${BACKEND_URL}/api/admin/ddos/alerts`, { headers }),
+        axios.get(`${API_URL}/api/admin/users`, { headers }),
+        axios.get(`${API_URL}/api/admin/stats`, { headers }),
+        axios.get(`${API_URL}/api/admin/telegram/status`, { headers }),
+        axios.get(`${API_URL}/api/admin/ddos/alerts`, { headers }),
       ]);
 
       if (usersRes.status === 'fulfilled') {
@@ -61,7 +61,7 @@ const AdminPanel = () => {
     if (!window.confirm('Tem certeza que deseja deletar este usuário?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${BACKEND_URL}/api/admin/users/${userId}`, {
+      await axios.delete(`${API_URL}/api/admin/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Usuário deletado');

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Target, Globe, Search, Code, Image as ImageIcon, Link as LinkIcon, Database, Video, Shield, Server, FileText } from 'lucide-react';
 import './WebScraper.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../config';
 
 const WebScraper = () => {
   const { token } = useAuth();
@@ -25,7 +25,7 @@ const WebScraper = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/tools/web-scraper`, { url }, {
+      const response = await axios.post(`${API_URL}/api/tools/web-scraper`, { url }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setResult(response.data);

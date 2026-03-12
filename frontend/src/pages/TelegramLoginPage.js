@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import './AuthPages.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '../config';
 
 const TelegramLoginPage = ({ onNavigate, onLoginSuccess }) => {
   const [telegramId, setTelegramId] = useState('');
@@ -22,7 +22,7 @@ const TelegramLoginPage = ({ onNavigate, onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/auth/telegram/login`, {
+      const response = await axios.post(`${API_URL}/api/auth/telegram/login`, {
         telegram_id: telegramId,
         password
       });

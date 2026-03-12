@@ -3,8 +3,7 @@ import axios from 'axios';
 import { FileText, Download, Eye, Filter, Calendar } from 'lucide-react';
 import './Reports.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { API_URL } from '../config';
 
 const Reports = () => {
   const [scans, setScans] = useState([]);
@@ -20,7 +19,7 @@ const Reports = () => {
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const response = await axios.get(`${API}/scans`, { headers });
+      const response = await axios.get(`${API_URL}/api/scans`, { headers });
       const completedScans = response.data.filter(s => s.status === 'completed');
       setScans(completedScans);
     } catch (error) {
@@ -32,7 +31,7 @@ const Reports = () => {
     try {
       const token = localStorage.getItem('token');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const response = await axios.get(`${API}/scans/${scanId}/vulnerabilities`, { headers });
+      const response = await axios.get(`${API_URL}/api/scans/${scanId}/vulnerabilities`, { headers });
       setVulnerabilities(response.data);
     } catch (error) {
       console.error('Erro ao carregar vulnerabilidades:', error);
