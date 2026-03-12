@@ -4,10 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "bootstrap": "npm run bootstrap:frontend && npm run bootstrap:scanner && npm run bootstrap:backend-python && npm run bootstrap:rust",
-    "bootstrap:frontend": "cd frontend && npm install",
-    "bootstrap:scanner": "npm install",
-    "bootstrap:backend-python": "pip install -r backend/requirements.txt",
+    "bootstrap": "npm install && cd frontend && npm install && pip install -r backend/requirements.txt",
     "bootstrap:rust": "cd backend/rust/security-core && cargo fetch",
 
     "build": "npm run build:frontend && npm run build:scanner && npm run build:rust",
