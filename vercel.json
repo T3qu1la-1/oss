@@ -7,12 +7,16 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": { "distDir": "build" }
+    },
+    {
+      "src": "backend/server.py",
+      "use": "@vercel/python"
     }
   ],
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://seu-backend-real.com/api/$1"
+      "destination": "backend/server.py"
     },
     {
       "source": "/(.*)",

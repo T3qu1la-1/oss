@@ -27,6 +27,7 @@ from db_connection import client, db
 
 # Create the main app without a prefix
 app = FastAPI()
+handler = app # Alias for Vercel
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
